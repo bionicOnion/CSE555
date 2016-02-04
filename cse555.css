@@ -1,0 +1,91 @@
+body
+{
+  background-color: LightGray;
+  margin-left: 17.5%;
+  margin-right: 17.5%;
+}
+
+a
+{
+  
+}
+
+div.codeWrapper
+{
+  background: #ffffff;
+  overflow:auto;
+  width:auto;
+  border:solid gray;
+  border-width:.1em .1em .1em .8em;
+  padding:.2em .6em;
+}
+
+div.heading
+{
+  text-align: center;
+}
+
+code
+{
+  white-space: pre;
+}
+
+h1, h2
+{
+  text-align: center;
+}
+
+h3
+{
+
+}
+
+h4
+{
+
+}
+
+hr
+{
+
+}
+
+img
+{
+  max-width: 67%;
+}
+
+li
+{
+
+}
+
+ol
+{
+
+}
+
+p
+{
+  
+}
+
+span.reserved
+{
+  color: #0000ff;
+}
+
+table
+{
+  text-align: center;
+  width: 80%;
+}
+
+table, td, th {
+    border: 1px solid #888;
+}
+
+td, th {
+    height: 25px;
+    width: 10%;
+}

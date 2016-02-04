@@ -1,0 +1,638 @@
+<!DOCTYPE HTML>
+
+<head>
+  <title>CSE 555: Project 1</title>
+  <link rel="stylesheet" href="cse555.css">
+</head>
+<body>
+  <h1>CSE 555: Project 1</h1>
+  <h2>Automatic Image Alignment with Gaussian Pyramids</h2>
+
+  <h2>Robert Miller</h2>
+
+  <div class="heading">
+    <a href="http://www.cse.wustl.edu/~pless/classes/555/proj1/">Project Guidelines</a>
+    ||
+    <a href="http://www.cse.wustl.edu/~pless/classes/555/">Course Website</a>
+    <br>
+    <br>
+    <a href="images/large/00904u.tif.bmp">
+      <img src="images/small/00904u.tif_small.bmp" />
+    </a>
+    <br>
+  </div>
+
+  <hr>
+
+  <!-- PROJECT OVERVIEW -->
+  <h3>Project Overview</h3>
+  <p>
+    <br>
+    <br>
+    This project is centered around the 'color' photographs taken by Sergei Mikhailovich
+    Prokudin-Gorskii in the early 20th century. Because color film had yet to be invented, the
+    photographs were in fact grayscale images taken through colored filters; when the three images
+    (one each for the red, green, and blue channels) are overlayed with the correct hue, the result
+    is a false-color image which approximates the original scene. Although getting high-quality
+    composite images is a task best left to trained experts with hours or days to dedicate to the
+    task, the goal of this project is to generate 'good enough' images in a matter of seconds.
+    <br>
+    <br>
+    To do so, I elected to work with CUDA C, using OpenCV to load and display images and the GPU to
+    perform most of the actual processing work. Although other languages might have been easier to
+    use&mdash;MATLAB in particular has a lot of very nice features that could have made this
+    assignment much easier to complete&mdash;I have long been interested in GPGPU programming but
+    had yet to find a project which would benefit from the massive parallelism that the technology
+    can offer.
+  </p>
+
+  <hr>
+
+  <!-- IMPLEMENTATION -->
+  <h3>Implementation</h3>
+  <p>
+    For all of the code samples included in this section, error handling, comments, timings, and
+    other non-critical code has been omitted to save space. The full soure for the project can be
+    found <a href="https://github.com/bionicOnion/ProkudinGorskii">here</a> with these parts intact.
+    Throughout the explanation below, 'host' refers to elements written in C++ which will run on
+    the CPU and 'device' refers to elements written in CUDA C which will be executed on the GPU.
+    <br>
+    <br>
+    The basic sequence of events involved in creating the false-color composite is relatively
+    straightforward:
+    <ol>
+      <li>Load a user-specified image using OpenCV</li>
+      <li>Split the image into its component color channels and copy them to the GPU</li>
+      <li>Construct a Gaussian pyramid from each channel</li>
+      <li>Detect edges at each level of the Gaussian pyramid</li>
+      <li>Align the color channels based on the detected edges</li>
+      <li>Create the composite image on the GPU based on the computed alignments</li>
+    </ol>
+
+
+
+    <h4>Loading, Splitting, and Copying Images</h4>
+    The first two steps are relatively straightforward and are accomplished entirely on the host.
+    OpenCV abstracts away all of the complexity of loading an image into the simple
+    <code>imread</code> function, and once the image has been loaded, some simple pointer math is
+    enough to determine the position at which each color channel begins. From that point, it's
+    simply a matter of allocating memory on the device and copying each color channel into the
+    corresponding buffer (<code>Image</code> is a <code>typedef</code> corresponding to a
+    <code>uint8_t*</code>):
+    <br>
+    <br>
+    <div class="codeWrapper">
+<code><span class="reserved">auto</span> sourceImage = cv::imread(argv[IMG_ARG_INDEX], CV_LOAD_IMAGE_GRAYSCALE);
+<span class="reserved">auto</span> compImgDims = make_short2(sourceImage.cols, sourceImage.rows / NUM_CHANNELS);
+
+<span class="reserved">auto</span> channelSize = compImgDims.x * compImgDims.y;
+<span class="reserved">auto</span> blueChannel = sourceImage.ptr();
+<span class="reserved">auto</span> greenChannel = blueChannel + channelSize;
+<span class="reserved">auto</span> redChannel = greenChannel + channelSize;
+
+Image dev_red, dev_green, dev_blue, dev_comp;
+Image dev_redEdges, dev_greenEdges, dev_blueEdges;
+<span class="reserved">short2</span> *dev_alignGR, *dev_alignGB;
+<span class="reserved">unsigned long long</span>* dev_errorSum;
+cudaMalloc(&amp;dev_red, channelSize * 4 / 3);
+cudaMalloc(&amp;dev_green, channelSize * 4 / 3);
+cudaMalloc(&amp;dev_blue, channelSize * 4 / 3);
+
+cudaMemcpy(dev_red, redChannel, channelSize, cudaMemcpyHostToDevice);
+cudaMemcpy(dev_green, greenChannel, channelSize, cudaMemcpyHostToDevice);
+cudaMemcpy(dev_blue, blueChannel, channelSize, cudaMemcpyHostToDevice);</code>
+    </div>
+    <br>
+    Much like the host function from which it gets its name, <code>cudaMalloc</code> allocates a
+    contiguous block of memory on the device. In this case, a total of <sup>4</sup>&frasl;<sub>3
+    </sub> the size of the image channel is requested, to account for the memory overhead of
+    constructing the Gaussian pyramid (which is guaranteed to use at most 33% more memory than
+    the base image). Similarly, <code>cudaMemcpy</code> works as one might expect; the major change
+    from the original <code>memcpy</code> is the 4<sup>th</sup> argument, which allows memory to be
+    copied to or from the device. Other device memory has also been allocated at this time as well
+    to hold the final composite image, the computed alignments, and error values used in aligning
+    the color channels; the names of the acquired pointers are above, but the calls to
+    <code>cudaMalloc</code> have been omitted to save space.
+
+
+
+    <h4>Constructing Gaussian Pyramids</h4>
+    Once the three color channels are on the device, it's time to build them out into full Gaussian
+    pyramids. From the host, this amounts to a single line:
+    <br>
+    <br>
+    <div class="codeWrapper">
+<code>generateGaussianPyramids&lt;&lt;&lt;blockSize, threadSize&gt;&gt;&gt;(dev_red, dev_green, dev_blue, compImgDims);</code>
+    </div>
+    <br>
+    This launches a number of instances of the specified function (referred to as a kernel in 
+    CUDA parlance); this number is specified by the <code>blockSize</code> and
+    <code>threadSize</code> variables. In my implementation, these are set to launch a number of
+    16 by 16 blocks which will be sufficient to cover the entire image&mdash;every pixel has a one
+    to one mapping with a kernel instance. On the device side, however, the code is decidedly more
+    complex (much as <code>Image</code> stood in for <code>uint8_t*</code> in the code shown above,
+    <code>Pixel</code> is equivalent to <code>uint8_t</code>):
+    <br>
+    <br>
+    <div class="codeWrapper">
+<code><span class="reserved">const float</span> gaussianFilter[3][3] =
+{
+  { 0.0625f, 0.1250f, 0.0625f },
+  { 0.1250f, 0.2500f, 0.1250f },
+  { 0.0625f, 0.1250f, 0.0625f },
+};
+
+<span class="reserved">short</span> x = threadIdx.x + blockIdx.x * blockDim.x;
+<span class="reserved">short</span> y = threadIdx.y + blockIdx.y * blockDim.y;
+<span class="reserved">if</span> (x > imgDims.x || y > imgDims.y)
+  <span class="reserved">return</span>;
+
+<span class="reserved">unsigned int</span> pyramidLevelOffset = 0;
+<span class="reserved">unsigned int</span> int offset = x + (y * imgDims.x);
+<span class="reserved">float</span> redVal, greenVal, blueVal;
+
+<span class="reserved">while</span> (x % 2 == 0 &amp;&amp; y % 2 == 0 &amp;&amp; imgDims.x > MIN_PYRAMID_SIZE &amp;&amp; imgDims.y > MIN_PYRAMID_SIZE)
+{
+  redVal = greenVal = blueVal = 0;
+  <span class="reserved">for</span> (<span class="reserved">int</span> i = offset - imgDims.x, ii = 0; i &lt;= offset + imgDims.x; i += imgDims.x, ++ii)
+  {
+    <span class="reserved">for</span> (<span class="reserved">int</span> j = i - 1, jj = 0; j &lt;= i + 1; ++j, ++jj)
+    {
+      <span class="reserved">if</span> (j >= pyramidLevelOffset &amp;&amp; j &lt; pyramidLevelOffset + (imgDims.x * imgDims.y))
+      {
+        redVal   += gaussianFilter[ii][jj] * red[j];
+        greenVal += gaussianFilter[ii][jj] * green[j];
+        blueVal  += gaussianFilter[ii][jj] * blue[j];
+      }
+    }
+  }
+
+  pyramidLevelOffset += imgDims.x * imgDims.y;
+  imgDims.x /= 2;
+  imgDims.y /= 2;
+  x /= 2;
+  y /= 2;
+  offset = pyramidLevelOffset + x + (y * imgDims.x);
+
+  red[offset]   = (Pixel) redVal;
+  green[offset] = (Pixel) greenVal;
+  blue[offset]  = (Pixel) blueVal;
+
+  __syncthreads();
+}</code>
+    </div>
+    <br>
+    The first part of this kernel determines the coordinates for which this instance of the kernel
+    will be responsible based on the built-in <code>threadIdx</code> and <code>blockIdx</code>
+    variables, which can be used to uniquely identify the kernel instance. The interesting part of
+    the kernel is the nested loop towards the bottom, which does a few things on every iteration:
+    <ul>
+      <li>Every other pixel along both the x and y directions is discarded, shrinking the image</li>
+      <li>Pixels which are <i>not</i> discarded are subjected to a 3x3 Gaussian blur filter (the
+        loop variables <code>i</code> and <code>j</code> find the neighboring pixel coordinates,
+        while <code>ii</code> and <code>jj</code> index into the filter)</li>
+      <li>The offset corresponding to the beginning of the image (<code>pyramidLevelOffset</code>)
+        is updated for the next iteration, the dimensions of the image are updated, and the
+        coordinate pair for which this instance is responsible is changed.</li>
+      <li>The calculated intensity for each channel is stored into the appropriate buffer</li>
+      <li><code>__syncthreads</code> is called. This built-in CUDA function blocks threads until
+        each of them has reached that point. Because every iteration of the loop builds off of the
+        one before it, this prevents a thread from reading garbage data before another thread has
+        the chance to fill it with a useful value.</li>
+    </ul>
+    When all threads have exited the loop, a full Gaussian pyramid has been filled in for each of
+    the color channels (all three pyramids are created simultaneously to reduce overhead, both from
+    the driver&mdash;which would otherwise need to send more information back and forth over the
+    system bus&mdash;and from needlessly duplicating work).
+
+
+
+    <h4>Edge Detection</h4>
+    Because the images been aligned aren't necessarily going to line up well based on intensity (as
+    each image represents color data, and the color channels of a given pixel are often only loosely
+    correlated at best), alignment is instead based off of the edges detected in the image. However,
+    to perform such an alignment, these edges must be <i>found</i> first&mdash;once again using the
+    GPU to perform the computation. Although only the red channel is shown here, the edges are
+    simultaneously detected for the other two channels (the omitted lines are practically identical
+    to the lines pertaining to the red channel).
+    <br>
+    <br>
+    <div class="codeWrapper">
+<code><span class="reserved">const float</span> edgeFilter[3][3] =
+{
+  { -0.333f, -0.333f,  0.000f },
+  { -0.333f,  0.000f,  0.333f },
+  {  0.000f,  0.333f,  0.333f },
+};
+
+<span class="reserved">short</span> x = threadIdx.x + (blockIdx.x * blockDim.x);
+<span class="reserved">short</span> y = threadIdx.y + (blockIdx.y * blockDim.y);
+<span class="reserved">if</span> (x > imgDims.x || y > imgDims.y)
+  <span class="reserved">return</span>;
+
+<span class="reserved">unsigned int</span> pyramidLevelOffset = 0;
+<span class="reserved">unsigned int</span> offset = x + (y * imgDims.x);
+
+<span class="reserved">float</span> redVal;
+<span class="reserved">while</span> (x &lt; imgDims.x &amp;&amp; y &lt; imgDims.y &amp;&amp; imgDims.x > MIN_PYRAMID_SIZE &amp;&amp; imgDims.y > MIN_PYRAMID_SIZE)
+{
+  redVal = 0;
+  <span class="reserved">for</span> (<span class="reserved">int</span> i = offset - imgDims.x, ii = 0; i &lt;= offset + imgDims.x; i += imgDims.x, ++ii)
+  {
+    <span class="reserved">for</span> (<span class="reserved">int</span> j = i - 1, jj = 0; j &lt;= i + 1; ++j, ++jj)
+    {
+      if (j >= pyramidLevelOffset &amp;&amp; j &lt; pyramidLevelOffset + (imgDims.x * imgDims.y))
+      {
+        redVal += edgeFilter[ii][jj] * red[j];
+      }
+    }
+  }
+
+  redVal = abs(redVal);
+
+  <span class="reserved">if</span> (redVal &lt; EDGE_THRESH)
+    redVal = 0;
+
+  redEdges[offset] = (Pixel) redVal;
+
+  pyramidLevelOffset += imgDims.x * imgDims.y;
+  imgDims.x /= 2;
+  imgDims.y /= 2;
+  offset = pyramidLevelOffset + x + (y * imgDims.x);</code>
+    </div>
+    <br>
+    This kernel functions quite similarly to the one shown before; only a few sections require
+    further explanation. Firstly, the filter being used is based off of a 3x3 Sobel filter.
+    Because only the sharpness of the edge (i.e. the magnitude of the image gradient) is needed for
+    later steps, there is no reason to apply the filter in two stages, and the process of detecting
+    horizontal and vertical edges has been combined with the logic to normalize the results into
+    this single step. Beyod this, the other piece worth pointing out is the condition towards the
+    end of the kernel: if the magnitude of the gradient at a given pixel is too low (meaning that
+    no strong edge has been detected at that position), the edge value is dropped to 0. For all of
+    the example images included on this page, <code>EDGE_THRESH</code> has been set to 48.
+
+
+
+    <h4>Channel Alignment</h4>
+    Computing a reasonable alignment is by far the most complicated and computationally expensive
+    part of this entire project, and is the only portion of the image composition logic which has
+    a non-trivial amount of host-side processing (see the Design Challenges section below for an
+    explanation of why this is the case).
+    <br>
+    <br>
+    On the host side, the code is still fairly lightweight, and exists mostly to move some of the
+    computational load off of the GPU:
+    <br>
+    <br>
+    <div class="codeWrapper">
+<code>PyramidLevel levels[NUM_ALIGN_LEVELS];
+levels[0].offset = 0;
+levels[0].dims = make_short2(compImgDims.x, compImgDims.y);
+<span class="reserved">for</span> (<span class="reserved">short</span> i = 1; i &lt; NUM_ALIGN_LEVELS; ++i)
+{
+  levels[i].offset = levels[i - 1].offset + (levels[i - 1].dims.x * levels[i - 1].dims.y);
+  levels[i].dims = make_short2(levels[i - 1].dims.x / 2, levels[i - 1].dims.y / 2);
+}
+
+<span class="reserved">short2</span> startAlign = make_short2(0, 0);
+cudaMemcpy(dev_alignGR, &amp;startAlign, sizeof(short2), cudaMemcpyHostToDevice);
+cudaMemcpy(dev_alignGB, &amp;startAlign, sizeof(short2), cudaMemcpyHostToDevice);
+for (short i = NUM_ALIGN_LEVELS - 1; i &gt;= 0; --i)
+{
+  if (levels[i].dims.x &lt; MIN_PYRAMID_SIZE || levels[i].dims.y &lt; MIN_PYRAMID_SIZE)
+    continue;
+  
+  alignImages&lt;&lt;&lt;blockSize, threadSize&gt;&gt;&gt;(dev_greenEdges + levels[i].offset,
+    dev_redEdges + levels[i].offset, levels[i].dims, dev_alignGR, dev_errorSum);
+  alignImages&lt;&lt;&lt;blockSize, threadSize&gt;&gt;&gt;(dev_greenEdges + levels[i].offset,
+    dev_blueEdges + levels[i].offset, levels[i].dims, dev_alignGB, dev_errorSum);
+}</code>
+    </div>
+    <br>
+    This code determines the offsets at which each of the levels of the Gaussian pyramids begins
+    and the size of the image at that pyramid level before iterating from the smallest to largest
+    pyramid level, adjusting the alignment at every step. If a pyramid level is too small to be
+    considered relevant (<code>MIN_PYRAMID_SIZE</code> is set to 64 for the sample images presented
+    here), the loop simply moves on until a sufficiently large pyramid level is found. As before,
+    most of the interesting code executes on the device. Due to the size of and complexity of the
+    kernel, I have split the code into multiple segments to be explained seperately.
+    <br>
+    <br>
+    <div class="codeWrapper">
+<code><span class="reserved">if</span> (threadIdx.x == 0 &amp;&amp; threadIdx.y == 0 &amp;&amp; blockIdx.x == 0 &amp;&amp; blockIdx.y == 0)
+{
+  alignment->x *= 2;
+  alignment->y *= 2;
+  memset(errSumBuf, 0, NUM_ALIGN_NEIGHBORS * sizeof(<span class="reserved">unsigned long long</span>));
+}
+
+<span class="reserved">const unsigned int</span> leftThreshold   = floor(imgDims.x * BORDER_CUT_MARGIN);
+<span class="reserved">const unsigned int</span> rightThreshold  = ceil(imgDims.x * (1 - BORDER_CUT_MARGIN));
+<span class="reserved">const unsigned int</span> topThreshold    = floor(imgDims.y * BORDER_CUT_MARGIN);
+<span class="reserved">const unsigned int</span> bottomThreshold = ceil(imgDims.y * (1 - BORDER_CUT_MARGIN));
+
+<span class="reserved">const unsigned int</span> x = threadIdx.x + (threadIdx.x * blockDim.x);
+<span class="reserved">const unsigned int</span> y = threadIdx.y + (threadIdx.y * blockDim.y);
+<span class="reserved">const unsigned long</span> baseImageOffset = x + (y * imgDims.x);
+<span class="reserved">const unsigned short</span> blockOffset = threadIdx.x + (threadIdx.y * blockDim.x);
+
+<span class="reserved">bool</span> inBounds = x > leftThreshold &amp;&amp; x &lt; rightThreshold &amp;&amp; y > topThreshold &amp;&amp; y &lt; bottomThreshold;
+
+<span class="reserved">__shared__ unsigned int</span> blockErrBuf[THREADS_PER_BLOCK * THREADS_PER_BLOCK];
+
+__syncthreads();</code>
+    </div>
+    <br>
+    Although there is relatively little logic to be found in this block of code, it sets up several
+    important elements for later on. The condition at the top ensures that the code within it runs
+    in only a single thread, preventing both the needless duplication of the <code>memset</code>
+    operation and errors resulting from doubling the calculated alignment values multiple times.
+    These values are doubled once per call to mirror the change in pyramid level: an offset of one
+    pixel in a 10x10 image is matched by a 2 pixel shift in a 20x20 image.
+    <br>
+    <br>
+    After this, the coordinates for which a given thread is responsible are calculated, and whether
+    or not these coordinates are 'in bounds' is determined. Because including the edges of the image
+    in the alignment process would result in incorrect behavior, some percentage is ignored at the
+    edges of the image. For the examples on this page, <code>BORDER_CUT_MARGIN</code> is set to
+    0.075.
+    <br>
+    <br>
+    The final interesting piece here is the declaration of <code>blockErrBuf</code>. This array
+    is allocated as shared memory, meaning that every thread in a given block will refer to the
+    same array&mdash;a feature that will be important later on in the kernel.
+    <br>
+    <br>
+    <div class="codeWrapper">
+<code><span class="reserved">for</span> (<span class="reserved">short</span> i = -1; i &lt;= 1; ++i)
+{
+  <span class="reserved">for</span> (<span class="reserved">short</span> j = -1; j &lt;= 1; ++j)
+  {
+    <span class="reserved">if</span> (inBounds)
+    {
+      <span class="reserved">unsigned long</span> alignImageOffset = (x + alignment->x + i + ((y + alignment->y + j) * imgDims.x));
+      blockErrBuf[blockOffset] = inBounds
+        ? (<span class="reserved">unsigned int</span>) powf((<span class="reserved">short</span>) baseEdges[baseImageOffset] - alignEdges[alignImageOffset], 2)
+        : 0;
+    }
+    <span class="reserved">else</span>
+    {
+      blockErrBuf[blockOffset] = 0;
+    }
+
+    __syncthreads();
+    
+    <span class="reserved">unsigned int</span> blockCutoff = THREADS_PER_BLOCK * THREADS_PER_BLOCK / 2;
+    <span class="reserved">while</span> (blockOffset &lt; blockCutoff)
+    {
+      blockErrBuf[blockOffset] += blockErrBuf[blockOffset + blockCutoff];
+      blockCutoff /= 2;
+    }
+
+    <span class="reserved">if</span> (threadIdx.x == 0 &amp;&amp; threadIdx.y == 0)
+      atomicAdd(errSumBuf + (i + 1) + ((j + 1) * 3), blockErrBuf[0]);
+
+    __syncthreads();
+  }
+}</code>
+    </div>
+    <br>
+    This loop computes the squared error for each of the possible alignments in a small window of
+    &plusmn;1 in both the x and y directions, storing the results into the shared buffer mentioned
+    above. Once all of these pixel-specific error values are computed, the results are summed up
+    &mdash;first in parallel, at a block-local level, and then across the entire system. Once
+    this loop has completed, all 9 locations in the <code>errSumBuf</code> array will contain the
+    calculated error for one of the nine possible alignment adjustments.
+    <br>
+    <br>
+    <div class="codeWrapper">
+<code><span class="reserved">if</span> (threadIdx.x == 0 &amp;&amp; threadIdx.y == 0 &amp;&amp; blockIdx.x == 0 &amp;&amp; blockIdx.y == 0)
+{
+  <span class="reserved">short2</span> bestAlignment = make_short2(0, 0);
+  <span class="reserved">unsigned long long</span> bestError = errSumBuf[4];
+  <span class="reserved">for</span> (<span class="reserved">short</span> i = 0; i &lt; NUM_ALIGN_NEIGHBORS; ++i)
+  {
+    <span class="reserved">if</span> (errSumBuf[i] &lt; bestError)
+    {
+      bestAlignment.x = (i / 3) - 1;
+      bestAlignment.y = (i % 3) - 1;
+      bestError = errSumBuf[i];
+    }
+  }
+
+  alignment->x += bestAlignment.x;
+  alignment->y += bestAlignment.y;
+}</code>
+    </div>
+    <br>
+    This final chunk computes the best alignment in a single thread. Any alignment adjustment
+    selected must be strictly better than remaining with the current alignment; this prevents the
+    alignment from drifting farther off from being centered when two possible adjustments tie with
+    one another for being the best option.
+    <br>
+    <br>
+    Note that alignment is performed against the green channel (rather than the blue, as specified
+    in the instructions). Although the blue channel is most guaranteed to be in the correct position
+    due to the ordering in which color channels appear in the source images, the green channel is
+    the one most likely to be correlated with both the red and blue channels&mdash;attempts to use
+    either red or blue as the base of alignment resulted in images in which one of the two other
+    channels was correctly aligned, but never both. The alignments computed with green as the base
+    are still imperfect, but are closer than the results that I obtained using either of the other
+    channels.
+
+
+
+    <h4>Image Composition</h4>
+    After all of the difficulty of computing the alignment to use, actually aligning the images is
+    practically trivial.
+    <br>
+    <br>
+    <div class="codeWrapper">
+<code><span class="reserved">short</span> greenX = threadIdx.x + blockIdx.x * blockDim.x;
+<span class="reserved">short</span> greenY = threadIdx.y + blockIdx.y * blockDim.y;
+<span class="reserved">short</span> redX = clampShort(greenX + grOffset->x, 0, imgDims.x);
+<span class="reserved">short</span> redY = clampShort(greenY + grOffset->y, 0, imgDims.y);
+<span class="reserved">short</span> blueX  = clampShort(greenX + gbOffset->x, 0, imgDims.x);
+<span class="reserved">short</span> blueY  = clampShort(greenY + gbOffset->y, 0, imgDims.y);
+
+<span class="reserved">unsigned int</span> redOffset = redX + (redY * imgDims.x);
+<span class="reserved">unsigned int</span> greenOffset = greenX + (greenY * imgDims.x);
+<span class="reserved">unsigned int</span> blueOffset = blueX + (blueY * imgDims.x);
+<span class="reserved">unsigned int</span> compOffset = redOffset * NUM_CHANNELS;
+
+composite[compOffset + RED] = (uint8_t) clampFloat(
+  red[redOffset]*RED_MAPPING[RED] +
+  green[greenOffset]*GREEN_MAPPING[RED] +
+  blue[blueOffset]*BLUE_MAPPING[RED], COLOR_MIN, COLOR_MAX);
+composite[compOffset + GREEN] = (uint8_t) clampFloat(
+  red[redOffset]*RED_MAPPING[GREEN] +
+  green[greenOffset]*GREEN_MAPPING[GREEN] +
+  blue[blueOffset]*BLUE_MAPPING[GREEN], COLOR_MIN, COLOR_MAX);
+composite[compOffset + BLUE] = (uint8_t) clampFloat(
+  red[redOffset]*RED_MAPPING[BLUE] +
+  green[greenOffset]*GREEN_MAPPING[BLUE] +
+  blue[blueOffset]*BLUE_MAPPING[BLUE], COLOR_MIN, COLOR_MAX);</code>
+    </div>
+    <br>
+    The only particularly noteworthy piece here is the allowance for custom color mapping. Because
+    the filters originally used by Prokudin-Gorskii 100 years ago likely don't match directly to
+    the red, green, and blue channel colors as defined by modern computers and because of
+    degradation over the intervening decades, it is likely the case that better results can be
+    obtained by using a slightly modified color mapping. More information can be found in the
+    Extra Credit section below.
+
+
+
+    <h4>Returning to the Host</h4>
+    After all of these steps, the false-color composite image is finally complete and ready to be
+    compied back to the host to be displayed and saved. The actual code to accomplish this is also
+    quite straightforward:
+    <br>
+    <br>
+    <div class="codeWrapper">
+<code><span class="reserved">auto</span> compBuf = malloc(channelSize * NUM_CHANNELS);
+cudaMemcpy(compBuf, dev_comp, channelSize * NUM_CHANNELS, cudaMemcpyDeviceToHost);
+cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
+    </div>
+    <br>
+    After this, all that remains is to free the device and host memory (using <code>cudaFree</code>
+    and <code>free</code> respectively), save copies of the image, and display the results to the
+    user.
+
+
+
+    <h4>Implementation Timing</h4>
+    Throughout the code, various timing points were inserted to get a sense for the speed at which
+    the GPU was performing all of the work being forced upon it. Overall, the total reported time
+    taken to produce a composite usually fell around 3 seconds; the following table shows timings
+    obtained from several consecutive runs. All of these timings were recorded on a 3-year old GTX
+    670; a newer card could likely acheive better results. On top of the card's age, it was also in
+    use as the active graphics processor for the system at the time. Additionally, this project
+    marked my first attempt at using CUDA C, and more experience would likely have led to a
+    better-optimized implementation.
+    <br>
+    <br>
+    <table align="center">
+      <tr>
+        <th />
+        <th>Run #1</th>
+        <th>Run #2</th>
+        <th>Run #3</th>
+        <th>Run #4</th>
+        <th>Run #5</th>
+        <th>Average</th>
+      </tr>
+      <tr>
+        <th>Pyramid Building</th>
+        <td>71.7087 ms</td>
+        <td>81.8286 ms</td>
+        <td>81.8282 ms</td>
+        <td>81.7873 ms</td>
+        <td>71.6874 ms</td>
+        <td><b>77.7680 ms</b></td>
+      </tr>
+      <tr>
+        <th>Edge Detecting</th>
+        <td>53.6433 ms</td>
+        <td>61.2084 ms</td>
+        <td>61.2130 ms</td>
+        <td>61.2192 ms</td>
+        <td>53.6442 ms</td>
+        <td><b>58.1856 ms</b></td>
+      </tr>
+      <tr>
+        <th>Channel Aligning</th>
+        <td>1491.41 ms</td>
+        <td>1500.34 ms</td>
+        <td>1507.14 ms</td>
+        <td>1502.23 ms</td>
+        <td>1483.05 ms</td>
+        <td><b>1496.83 ms</b></td>
+      </tr>
+      <tr>
+        <th>Image Compositing</th>
+        <td>18.7402 ms</td>
+        <td>18.7836 ms</td>
+        <td>18.7811 ms</td>
+        <td>18.7630 ms</td>
+        <td>18.5305 ms</td>
+        <td><b>18.7197 ms</b></td>
+      </tr>
+      <tr>
+        <th>Total GPU Time</th>
+        <td>1635.51 ms</td>
+        <td>1662.16 ms</td>
+        <td>1668.96 ms</td>
+        <td>1664.00 ms</td>
+        <td>1626.91 ms</td>
+        <td><b>1651.51 ms</b></td>
+      </tr>
+      <tr>
+        <th>Overall Total</th>
+        <td><b>2.23062 seconds</b></td>
+        <td><b>3.25326 seconds</b></td>
+        <td><b>3.26184 seconds</b></td>
+        <td><b>3.25979 seconds</b></td>
+        <td><b>2.21317 seconds</b></td>
+        <td><b>2.84374 seconds</b></td>
+      </tr>
+    </table>
+    <br>
+    As is clear from the table above, computing the alignment was literally orders of magnitude
+    slower than the other components of the implementation, taking roughly half of the computations
+    time on its own (much of which was spent on the GPU itself; because tasks execute on the GPU
+    asynchronously relative to the CPU, the stream of work for the GPU to work on was likely
+    continually saturated, meaning that much of that time would have been spent actively working
+    within a kernel).
+
+  <hr>
+
+  <!-- SOME EXAMPLES -->
+  <h3>Sample Output</h3>
+  <p>
+    
+  </p>
+
+  <hr>
+
+  <!-- CHALLENGES FACED -->
+  <h3>Design Challenges</h3>
+  <p>
+    Debugging device code can be difficult (massively parallel, separate memory space, etc.)
+    If device code takes too long to execute, OS unceremoniously kills it
+    Learning CUDA
+    Broken syntax highlighting
+    Figuring out the damn alignment code
+    CUDA forced all device code to be in a single file
+  </p>
+
+  <hr>
+
+  <!-- IMPLEMENTATION ADVANTAGES -->
+  <h3>Design Advantages</h3>
+  <p>
+    FAST FAST FAST -- even my relatively simple, unoptimized implementation is quick (get an exact timing)
+  </p>
+
+  <hr>
+
+  <!-- EXTRA CREDIT -->
+  <h3>Extra Credit</h3>
+  <h4>Alignment by Edge Detection</h4>
+  <p>
+    
+  </p>
+
+  <h4>Improved Color Mapping</h4>
+  <p>
+    
+  </p>
+
+  <hr>
+
+  <!-- FURTHER EXAMPLES -->
+  <h3>Further Examples</h3>
+  <p>
+    
+  </p>
+</body>
