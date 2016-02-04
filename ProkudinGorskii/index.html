@@ -7,7 +7,7 @@
 </head>
 <body>
   <h1>CSE 555: Project 1</h1>
-  <h2>Automatic Image Alignment with Gaussian Pyramids</h2>
+  <h2>Automatic Image Alignment with Image Pyramids</h2>
 
   <h2>Robert Miller</h2>
 
@@ -84,8 +84,8 @@
     <ol>
       <li>Load a user-specified image using OpenCV</li>
       <li>Split the image into its component color channels and copy them to the GPU</li>
-      <li>Construct a Gaussian pyramid from each channel</li>
-      <li>Detect edges at each level of the Gaussian pyramid</li>
+      <li>Construct an image pyramid from each channel</li>
+      <li>Detect edges at each level of the image pyramid</li>
       <li>Align the color channels based on the detected edges</li>
       <li>Create the composite image on the GPU based on the computed alignments</li>
     </ol>
@@ -127,7 +127,7 @@ cudaMemcpy(dev_blue, blueChannel, channelSize, cudaMemcpyHostToDevice);</code>
     Much like the host function from which it gets its name, <code>cudaMalloc</code> allocates a
     contiguous block of memory on the device. In this case, a total of <sup>4</sup>&frasl;<sub>3
     </sub> the size of the image channel is requested, to account for the memory overhead of
-    constructing the Gaussian pyramid (which is guaranteed to use at most 33% more memory than
+    constructing the image pyramid (which is guaranteed to use at most 33% more memory than
     the base image). Similarly, <code>cudaMemcpy</code> works as one might expect; the major change
     from the original <code>memcpy</code> is the 4<sup>th</sup> argument, which allows memory to be
     copied to or from the device. Other device memory has also been allocated at this time as well
@@ -137,13 +137,13 @@ cudaMemcpy(dev_blue, blueChannel, channelSize, cudaMemcpyHostToDevice);</code>
 
 
 
-    <h4>Constructing Gaussian Pyramids</h4>
-    Once the three color channels are on the device, it's time to build them out into full Gaussian
+    <h4>Constructing Image Pyramids</h4>
+    Once the three color channels are on the device, it's time to build them out into full image
     pyramids. From the host, this amounts to a single line:
     <br>
     <br>
     <div class="codeWrapper">
-<code>generateGaussianPyramids&lt;&lt;&lt;blockSize, threadSize&gt;&gt;&gt;(dev_red, dev_green, dev_blue, compImgDims);</code>
+<code>generateImagePyramids&lt;&lt;&lt;blockSize, threadSize&gt;&gt;&gt;(dev_red, dev_green, dev_blue, compImgDims);</code>
     </div>
     <br>
     This launches a number of instances of the specified function (referred to as a kernel in 
@@ -221,7 +221,7 @@ cudaMemcpy(dev_blue, blueChannel, channelSize, cudaMemcpyHostToDevice);</code>
         one before it, this prevents a thread from reading garbage data before another thread has
         the chance to fill it with a useful value.</li>
     </ul>
-    When all threads have exited the loop, a full Gaussian pyramid has been filled in for each of
+    When all threads have exited the loop, a full image pyramid has been filled in for each of
     the color channels (all three pyramids are created simultaneously to reduce overhead, both from
     the driver&mdash;which would otherwise need to send more information back and forth over the
     system bus&mdash;and from needlessly duplicating work).
@@ -330,7 +330,7 @@ for (short i = NUM_ALIGN_LEVELS - 1; i &gt;= 0; --i)
 }</code>
     </div>
     <br>
-    This code determines the offsets at which each of the levels of the Gaussian pyramids begins
+    This code determines the offsets at which each of the levels of the image pyramids begins
     and the size of the image at that pyramid level before iterating from the smallest to largest
     pyramid level, adjusting the alignment at every step. If a pyramid level is too small to be
     considered relevant (<code>MIN_PYRAMID_SIZE</code> is set to 64 for the sample images presented
@@ -727,7 +727,7 @@ cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
     <br>
     <br>
     CUDA issues aside, by far the most challenging part of this assignment was the computation of
-    the alignments&mdash;the code for loading the images, producing Gaussian pyramids, compositing
+    the alignments&mdash;the code for loading the images, producing image pyramids, compositing
     the channels, and displaying the results was written largely within just a few hours; the code
     for computing alignments took several days (and the results are still far from perfect).
     Although some of this difficulty stemmed from the complexity of the problem, much of it comes
