@@ -2,7 +2,7 @@
 
 <head>
   <title>CSE 555: Project 1</title>
-  <link rel="stylesheet" href="cse555.css">
+  <link rel="stylesheet" href="../cse555.css">
 </head>
 <body>
   <h1>CSE 555: Project 1</h1>
@@ -579,7 +579,7 @@ cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
     </table>
     <br>
     As is clear from the table above, computing the alignment was literally orders of magnitude
-    slower than the other components of the implementation, taking roughly half of the computations
+    slower than the other components of the implementation, taking roughly half of the computation
     time on its own (much of which was spent on the GPU itself; because tasks execute on the GPU
     asynchronously relative to the CPU, the stream of work for the GPU to work on was likely
     continually saturated, meaning that much of that time would have been spent actively working
@@ -589,9 +589,62 @@ cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
 
   <!-- SOME EXAMPLES -->
   <h3>Sample Output</h3>
-  <p>
-    
-  </p>
+  
+  <figure>
+    <a href="images/large/00904u.tif.bmp">
+      <img src="images/small/00904u.tif_small.bmp" alt="Pillars composite" />
+    </a>
+    <figcaption>Green/Red: (-26, -18), Green/Blue: (24, 16)</figcaption>
+  </figure>
+
+  <figure>
+    <a href="images/large/00998u.tif.bmp">
+      <img src="images/small/00998u.tif_small.bmp" alt="Stained glass composite" />
+    </a>
+    <figcaption>Green/Red: (-24, -8), Green/Blue: (16, 24)</figcaption>
+  </figure>
+
+  <figure>
+    <a href="images/large/00790u.tif.bmp">
+      <img src="images/small/00790u.tif_small.bmp" alt="Trees composite" />
+    </a>
+    <figcaption>Green/Red: (8, -54), Green/Blue: (28, 2)</figcaption>
+  </figure>
+
+  <figure>
+    <a href="images/large/01520u.tif.bmp">
+      <img src="images/small/01520u.tif_small.bmp" alt="Man composite" />
+    </a>
+    <figcaption>Green/Red: (-20, 20), Green/Blue: (20, 36)</figcaption>
+  </figure>
+
+  <figure>
+    <a href="images/large/01118u.tif.bmp">
+      <img src="images/small/01118u.tif_small.bmp" alt="Forest path composite" />
+    </a>
+    <figcaption>Green/Red: (0, -4), Green/Blue: (-4, -4)</figcaption>
+  </figure>
+
+  <figure>
+    <a href="images/large/00451u.tif.bmp">
+      <img src="images/small/00451u.tif_small.bmp" alt="Overlook composite" />
+    </a>
+    <figcaption>Green/Red: (0, 16), Green/Blue: (-8, -8)</figcaption>
+  </figure>
+
+  <figure>
+    <a href="images/large/00850u.tif.bmp">
+      <img src="images/small/00850u.tif_small.bmp" alt="Field composite" />
+    </a>
+    <figcaption>Green/Red: (0, 8), Green/Blue: (24, 0)</figcaption>
+  </figure>
+
+  <figure>
+    <a href="images/large/01485u.tif.bmp">
+      <img src="images/small/01485u.tif_small.bmp" alt="Women composite" />
+    </a>
+    <figcaption>Green/Red: (-26, -8), Green/Blue: (20, 28)</figcaption>
+  </figure>
 
   <hr>
 
@@ -624,14 +677,6 @@ cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
   </p>
 
   <h4>Improved Color Mapping</h4>
-  <p>
-    
-  </p>
-
-  <hr>
-
-  <!-- FURTHER EXAMPLES -->
-  <h3>Further Examples</h3>
   <p>
     
   </p>
