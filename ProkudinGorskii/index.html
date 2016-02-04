@@ -43,6 +43,27 @@
     assignment much easier to complete&mdash;I have long been interested in GPGPU programming but
     had yet to find a project which would benefit from the massive parallelism that the technology
     can offer.
+    <br>
+    <br>
+    The input data is in the form of images containing each of the three color images (with blue on
+    the top, followed by green, and red on the bottom). The images look like the following:
+    <br>
+
+    <figure>
+      <img src="images/small/00998u_small.bmp" alt="Sample input image" />
+      <figcaption>Stained glass input image</figcaption>
+    </figure>
+
+    <figure>
+      <img src="images/small/01520u_small.bmp" alt="Sample input image" />
+      <figcaption>Man in field input image</figcaption>
+    </figure>
+
+    When finished, my implementation will produce both a full-size composite image and a reduced-size
+    version (the current setting for the size reduction enforces that the maximum width or height is
+    512 pixels), which will be saved as bitmaps using the original filename as the name for the new
+    images (e.g. 00998u.tif, the stained glass image above, produces 00998u.tif.bmp and
+    00998u.tif_small.bmp). The smaller version is then displayed to the user.
   </p>
 
   <hr>
@@ -700,7 +721,9 @@ cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
     code tries to work with the data that should have been modified by the failed kernel. On top of
     this, the operating system needs to be able to use the GPU for graphics processing, and kerenels
     which take too long to execute are unceremoniously killed by the OS without much in the way of
-    warning.
+    warning. In particular, the image alignment kernel needed to be divided into multiple
+    invocations; attempting to perform the alignment in a single call invariably resulted in a
+    timeout, invalidating the memory and cuasing the program to fail.
     <br>
     <br>
     CUDA issues aside, by far the most challenging part of this assignment was the computation of
