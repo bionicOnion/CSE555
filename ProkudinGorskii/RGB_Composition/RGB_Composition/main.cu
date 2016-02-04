@@ -4,7 +4,7 @@
  * Last Edited: 2/2/16
  *
  * The main entry point of the application which will align and composite images representing the red, green, and blue
- *   color channels of a single image by employing Gaussian pyramids.
+ *   color channels of a single image by employing image pyramids.
  *
  * Images are loaded and displayed using the utilities provided by OpenCV, but most of the processing work has been
  *   handed off to the GPU through the use of CUDA C. This has the marked disadvantage that this code can only run on
@@ -95,7 +95,7 @@ int main(int argc, char** argv)
 	auto redChannel = greenChannel + channelSize;
 
 	// Allocate space on the GPU to copy the images and other required variables to
-	// For the three channel buffers, enough space is allocated to construct a full Gaussian pyramid
+	// For the three channel buffers, enough space is allocated to construct a full image pyramid
 	// For the composite buffer, enough space is allocated to construct a 3-channel image
 	Image dev_red, dev_green, dev_blue, dev_comp;
 	Image dev_redEdges, dev_greenEdges, dev_blueEdges;
@@ -125,15 +125,15 @@ int main(int argc, char** argv)
 	CUDA_CALL(cudaEventCreate(&alignment), GPU_TIMING_FAIL, __LINE__);
 	CUDA_CALL(cudaEventCreate(&finish), GPU_TIMING_FAIL, __LINE__);
 
-	// Detect edges and generate a Gaussian pyramid
+	// Detect edges and generate image pyramids
 	CUDA_CALL(cudaEventRecord(start, 0), GPU_TIMING_FAIL, __LINE__);
-	generateGaussianPyramids<<<blockSize, threadSize>>>(dev_red, dev_green, dev_blue, compImgDims);
+	generateImagePyramids<<<blockSize, threadSize>>>(dev_red, dev_green, dev_blue, compImgDims);
 	CUDA_CALL(cudaEventRecord(pyramids, 0), GPU_TIMING_FAIL, __LINE__);
 	detectEdges<<<blockSize, threadSize>>>(dev_red, dev_green, dev_blue, dev_redEdges, dev_greenEdges, dev_blueEdges,
 		compImgDims);
 	CUDA_CALL(cudaEventRecord(edges, 0), GPU_TIMING_FAIL, __LINE__);
 
-	// Calculate the sizes and offsets of each of the Gaussian pyramid levels
+	// Calculate the sizes and offsets of each of the image pyramid levels
 	PyramidLevel levels[NUM_ALIGN_LEVELS];
 	levels[0].offset = 0;
 	levels[0].dims = make_short2(compImgDims.x, compImgDims.y);

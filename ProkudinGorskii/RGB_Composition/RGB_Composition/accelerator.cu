@@ -24,7 +24,7 @@ __device__ inline short clampShort(short val, short min, short max)
 	{ return val > min ? (val < max ? val : max) : min; }
 
 
-__global__ void generateGaussianPyramids(Image red, Image green, Image blue, short2 imgDims)
+__global__ void generateImagePyramids(Image red, Image green, Image blue, short2 imgDims)
 {
 	// Define a 3x3 Gaussian filter with which the per-layer blurring will be performed
 	const float gaussianFilter[3][3] =

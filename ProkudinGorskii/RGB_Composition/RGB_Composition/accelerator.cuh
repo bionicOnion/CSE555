@@ -19,7 +19,7 @@
  typedef Pixel* Image;
 
 
- __global__ void generateGaussianPyramids(Image red, Image green, Image blue, short2 imgDims);
+ __global__ void generateImagePyramids(Image red, Image green, Image blue, short2 imgDims);
 __global__ void detectEdges(Image red, Image green, Image blue, Image redEdges, Image greenEdges,
 	Image blueEdges, short2 imgDims);
 __global__ void alignImages(Image baseEdges, Image alignEdges, short2 imgDims, short2* alignment,
