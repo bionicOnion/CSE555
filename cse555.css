@@ -54,6 +54,12 @@ hr
   background-color: #555;
 }
 
+hr.invisible
+{
+  color: LightGray;
+  background-color: LightGray;
+}
+
 img
 {
   max-width: 100%;
