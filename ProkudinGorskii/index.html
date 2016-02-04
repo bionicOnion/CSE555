@@ -590,6 +590,9 @@ cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
 
   <!-- SOME EXAMPLES -->
   <h3>Sample Output</h3>
+  <p>
+    All of the images below can be clicked to open the full-size version.
+  </p>
   
   <figure>
     <a href="images/large/00904u.tif.bmp">
@@ -653,17 +656,61 @@ cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
     <figcaption>Green/Red: (-26, -8), Green/Blue: (20, 28)</figcaption>
   </figure>
 
+  <p>
+    Looking at the images above, it is clear that my implementation acheives the best results on
+    images with a few strong edges. The first three images&mdash;the building with pillars, the
+    stained glass window, and the stand of trees&mdash;all have clear edges in them with strong
+    shifts in intensity across all color channels. Images with more complex patterns&mdash;such as
+    any of the images with a significant amount of foliage in them&mdash;and images with more
+    gradual edges in them don't align nearly as well. I suspect that this is due to either having
+    too much or too little signal: when the patterns are complicated (meaning that there are many
+    edges in the image), there is a decreased likelihood of an edge in one image being correctly
+    matched to an edge in another image. Simply put, all foliage looks more or less the same, and
+    my implementation isn't sophisticated enough to tell the difference. Slightly more advanced
+    methods of detecting and aligning features would likely have acheived better results, but I
+    did not have the time to dedicate to implementing those features for this project (as
+    those features would have effectively amounted to a full project in and of themselves).
+  </p>
+
   <hr>
 
   <!-- CHALLENGES FACED -->
   <h3>Design Challenges</h3>
   <p>
-    Debugging device code can be difficult (massively parallel, separate memory space, etc.)
-    If device code takes too long to execute, OS unceremoniously kills it
-    Learning CUDA
-    Broken syntax highlighting
-    Figuring out the alignment code
-    CUDA forced all device code to be in a single file
+    Although I faced many challenges in developing a CUDA-based implementation, the vast majority
+    of these issues were simply smaller facets of one central issue: the code that I wrote runs on
+    the GPU, and the GPU is in many respects an entirely seperate system from the rest of the
+    computer. Although Nvidia has produced many useful tools to aid in development and debugging,
+    I still found it to be quite difficult to get a broad sense of what was happening on the device
+    while my code was executing.
+    <br>
+    <br>
+    For example, the standard Visual Studio debugger has no capability to debug device code.
+    Instead, Nvidia has released a seperate CUDA debugger, but using this tool is both resource
+    intensive (my entire computer slowed to a crawl whenver I used the debugger, buckling under the
+    weight of all of the information being shuttled back and forth across the system bus) and not
+    entirely informative, as any breakpoints will only be triggered in a single thread (often the
+    one with block and thread IDs of 0), and some subtle memory access issues only occured for
+    specific threads (making it difficult to figure out what was going wrong based off of the
+    debugger alone).
+    <br>
+    <br>
+    Additionally, because the GPU is a largely seperate system, its failures are largely
+    masked&mdash;illegal memory accesses that would trigger a segmentation fault on the host simply
+    fail silently on the GPU; the incorrect behavior will only become obvious once <i>later</i>
+    code tries to work with the data that should have been modified by the failed kernel. On top of
+    this, the operating system needs to be able to use the GPU for graphics processing, and kerenels
+    which take too long to execute are unceremoniously killed by the OS without much in the way of
+    warning.
+    <br>
+    <br>
+    CUDA issues aside, by far the most challenging part of this assignment was the computation of
+    the alignments&mdash;the code for loading the images, producing Gaussian pyramids, compositing
+    the channels, and displaying the results was written largely within just a few hours; the code
+    for computing alignments took several days (and the results are still far from perfect).
+    Although some of this difficulty stemmed from the complexity of the problem, much of it comes
+    back to my choice of implementation language: MATLAB provides a lot of nice functionality that
+    I had to instead build from scratch for myself.
   </p>
 
   <hr>
@@ -671,7 +718,24 @@ cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
   <!-- IMPLEMENTATION ADVANTAGES -->
   <h3>Design Advantages</h3>
   <p>
-    FAST FAST FAST -- even my relatively simple, unoptimized implementation is quick (get an exact timing)
+    Although I can't speak to the relative speed of a MATLAB implementation, I can definitively say
+    that most of the code written for this project runs very quickly. GPGPU techniques are well
+    suited to the domain of image processing and creation (in fact, calling it 'general purpose'
+    graphics processing is something of a misnomer in this context). Only the alignment kernel
+    takes a significant amount of processing time; the others complete practically instantaneously.
+    <br>
+    <br>
+    Additionally, writing all of the components myself gave me tight control over memory usage and
+    other such optimizations: I knew exactly how and where values were stored in memory, giving me
+    the freedom to calculate offsets to directly access the relevant memory (of course, whether or
+    not "my implementation relies heavily on pointer arithmetic" is truly an advantage is a matter
+    of personal preference).
+    <br>
+    <br>
+    Ultimately, though, I think that these advantages would have been far outweighed by the relative
+    simplicity of a MATLAB implementation. CUDA is a powerful technology, and I'm glad to have
+    gained some experience working with it, but it is ill-suited to the relatively tight deadlines
+    required by coursework.
   </p>
 
   <hr>
@@ -680,17 +744,47 @@ cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
   <h3>Extra Credit</h3>
   <h4>Alignment by Edge Detection</h4>
   <p>
-    
+    As described above, images are aligned by detecting edges and comparing the obtained results.
+    Below are some examples of the detected edges, as well as samples of images aligned both with
+    and without edge detection to demonstrate the observed change.
+    <br>
+    <br>
+    <b>TODO put in examples</b>
   </p>
 
   <h4>Improved Color Mapping</h4>
   <p>
-    
-  </p>
-
-  <!-- CONCLUSION -->
-  <h3>Conclusion</h3>
-  <p>
-    
+    Also described above was the affordance for custom color mappings. The example images on this
+    page use a slightly modified color mapping (given in the table below); images with a one-to-one
+    mapping have been provided for reference.
+    <br>
+    <table>
+      <tr>
+        <th></th>
+        <th>Mapped Red</th>
+        <th>Mapped Green</th>
+        <th>Mapped Blue</th>
+      </tr>
+      <tr>
+        <th>Original Red</th>
+        <td>1.0</td>
+        <td>0.0</td>
+        <td>0.0</td>
+      </tr>
+      <tr>
+        <th>Original Green</th>
+        <td>0.0</td>
+        <td>1.2</td>
+        <td>0.0</td>
+      </tr>
+      <tr>
+        <th>Original Blue</th>
+        <td>0.0</td>
+        <td>0.0</td>
+        <td>0.8</td>
+      </tr>
+    </table>
+    <br>
+    <b>TODO put in examples</b>
   </p>
 </body>
