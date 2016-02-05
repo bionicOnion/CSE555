@@ -322,8 +322,8 @@ levels[0].dims = make_short2(compImgDims.x, compImgDims.y);
 }
 
 short2 startAlign = make_short2(0, 0);
-cudaMemcpy(dev_alignGR, &startAlign, <span class="reserved">sizeof</span>(<span class="reserved">short2</span>), cudaMemcpyHostToDevice));
-cudaMemcpy(dev_alignGB, &startAlign, <span class="reserved">sizeof</span>(<span class="reserved">short2</span>), cudaMemcpyHostToDevice));
+cudaMemcpy(dev_alignGR, &amp;startAlign, <span class="reserved">sizeof</span>(<span class="reserved">short2</span>), cudaMemcpyHostToDevice));
+cudaMemcpy(dev_alignGB, &amp;startAlign, <span class="reserved">sizeof</span>(<span class="reserved">short2</span>), cudaMemcpyHostToDevice));
 <span class="reserved">for</span> (<span class="reserved">short</span> i = NUM_ALIGN_LEVELS - 1; i >= 0; --i)
 {
 	<span class="reserved">if</span> (levels[i].dims.x < MIN_PYRAMID_SIZE || levels[i].dims.y &lt; MIN_PYRAMID_SIZE)
