@@ -315,24 +315,33 @@ cudaMemcpy(dev_blue, blueChannel, channelSize, cudaMemcpyHostToDevice);</code>
 <code>PyramidLevel levels[NUM_ALIGN_LEVELS];
 levels[0].offset = 0;
 levels[0].dims = make_short2(compImgDims.x, compImgDims.y);
-<span class="reserved">for</span> (<span class="reserved">short</span> i = 1; i &lt; NUM_ALIGN_LEVELS; ++i)
+<span class="reserved">for</span> (<span class="reserved">short</span> i = 1; i < NUM_ALIGN_LEVELS; ++i)
 {
-  levels[i].offset = levels[i - 1].offset + (levels[i - 1].dims.x * levels[i - 1].dims.y);
-  levels[i].dims = make_short2(levels[i - 1].dims.x / 2, levels[i - 1].dims.y / 2);
+	levels[i].offset = levels[i - 1].offset + (levels[i - 1].dims.x * levels[i - 1].dims.y);
+	levels[i].dims = make_short2(levels[i - 1].dims.x / 2, levels[i - 1].dims.y / 2);
 }
 
-<span class="reserved">short2</span> startAlign = make_short2(0, 0);
-cudaMemcpy(dev_alignGR, &amp;startAlign, sizeof(short2), cudaMemcpyHostToDevice);
-cudaMemcpy(dev_alignGB, &amp;startAlign, sizeof(short2), cudaMemcpyHostToDevice);
-for (short i = NUM_ALIGN_LEVELS - 1; i &gt;= 0; --i)
+short2 startAlign = make_short2(0, 0);
+cudaMemcpy(dev_alignGR, &startAlign, <span class="reserved">sizeof</span>(<span class="reserved">short2</span>), cudaMemcpyHostToDevice));
+cudaMemcpy(dev_alignGB, &startAlign, <span class="reserved">sizeof</span>(<span class="reserved">short2</span>), cudaMemcpyHostToDevice));
+<span class="reserved">for</span> (<span class="reserved">short</span> i = NUM_ALIGN_LEVELS - 1; i >= 0; --i)
 {
-  if (levels[i].dims.x &lt; MIN_PYRAMID_SIZE || levels[i].dims.y &lt; MIN_PYRAMID_SIZE)
-    continue;
-  
-  alignImages&lt;&lt;&lt;blockSize, threadSize&gt;&gt;&gt;(dev_greenEdges + levels[i].offset,
-    dev_redEdges + levels[i].offset, levels[i].dims, dev_alignGR, dev_errorSum);
-  alignImages&lt;&lt;&lt;blockSize, threadSize&gt;&gt;&gt;(dev_greenEdges + levels[i].offset,
-    dev_blueEdges + levels[i].offset, levels[i].dims, dev_alignGB, dev_errorSum);
+	<span class="reserved">if</span> (levels[i].dims.x < MIN_PYRAMID_SIZE || levels[i].dims.y &lt; MIN_PYRAMID_SIZE)
+		<span class="reserved">continue</span>;
+
+	// Calculate the margin to ignore at this pyramid level
+	<span class="reserved">const unsigned int</span> leftThreshold   = floor(levels[i].dims.x * BORDER_CUT_MARGIN);
+	<span class="reserved">const unsigned int</span> rightThreshold  = ceil(levels[i].dims.x * (1 - BORDER_CUT_MARGIN));
+	<span class="reserved">const unsigned int</span> topThreshold    = floor(levels[i].dims.y * BORDER_CUT_MARGIN);
+	<span class="reserved">const unsigned int</span> bottomThreshold = ceil(levels[i].dims.y * (1 - BORDER_CUT_MARGIN));
+	<span class="reserved">short4</span> threshold = make_short4(leftThreshold, rightThreshold, topThreshold, bottomThreshold);
+
+	// Perform image alignment
+	dim3 pyramidBlockSize(levels[i].dims.x / THREADS_PER_BLOCK, levels[i].dims.y / THREADS_PER_BLOCK);
+	alignImages&lt;&lt;&lt;pyramidBlockSize, threadSize&gt;&gt;&gt;(dev_greenEdges + levels[i].offset,
+		dev_redEdges + levels[i].offset, levels[i].dims, dev_alignGR, threshold, dev_errorSum);
+	alignImages&lt;&lt;&lt;pyramidBlockSize, threadSize&gt;&gt;&gt;(dev_greenEdges + levels[i].offset,
+		dev_blueEdges + levels[i].offset, levels[i].dims, dev_alignGB, threshold, dev_errorSum);
 }</code>
     </div>
     <br>
@@ -340,9 +349,12 @@ for (short i = NUM_ALIGN_LEVELS - 1; i &gt;= 0; --i)
     and the size of the image at that pyramid level before iterating from the smallest to largest
     pyramid level, adjusting the alignment at every step. If a pyramid level is too small to be
     considered relevant (<code>MIN_PYRAMID_SIZE</code> is set to 64 for the sample images presented
-    here), the loop simply moves on until a sufficiently large pyramid level is found. As before,
-    most of the interesting code executes on the device. Due to the size of and complexity of the
-    kernel, I have split the code into multiple segments to be explained seperately.
+    here), the loop simply moves on until a sufficiently large pyramid level is found. Otherwise, it
+    determines the threshold of the image: because including the edges of the image in the alignment
+    process would result in incorrect behavior, some percentage is ignored at the edges of the image.
+    For the examples on this page, <code>BORDER_CUT_MARGIN</code> is set to 0.075. As before, most
+    of the interesting code executes on the device. Due to the size of and complexity of the kernel,
+    I have split the code into multiple segments to be explained seperately.
     <br>
     <br>
     <div class="codeWrapper">
@@ -353,13 +365,8 @@ for (short i = NUM_ALIGN_LEVELS - 1; i &gt;= 0; --i)
   memset(errSumBuf, 0, NUM_ALIGN_NEIGHBORS * sizeof(<span class="reserved">unsigned long long</span>));
 }
 
-<span class="reserved">const unsigned int</span> leftThreshold   = floor(imgDims.x * BORDER_CUT_MARGIN);
-<span class="reserved">const unsigned int</span> rightThreshold  = ceil(imgDims.x * (1 - BORDER_CUT_MARGIN));
-<span class="reserved">const unsigned int</span> topThreshold    = floor(imgDims.y * BORDER_CUT_MARGIN);
-<span class="reserved">const unsigned int</span> bottomThreshold = ceil(imgDims.y * (1 - BORDER_CUT_MARGIN));
-
-<span class="reserved">const unsigned int</span> x = threadIdx.x + (threadIdx.x * blockDim.x);
-<span class="reserved">const unsigned int</span> y = threadIdx.y + (threadIdx.y * blockDim.y);
+<span class="reserved">const unsigned int</span> x = threadIdx.x + (blockIdx.x * blockDim.x);
+<span class="reserved">const unsigned int</span> y = threadIdx.y + (blockIdx.y * blockDim.y);
 <span class="reserved">const unsigned long</span> baseImageOffset = x + (y * imgDims.x);
 <span class="reserved">const unsigned short</span> blockOffset = threadIdx.x + (threadIdx.y * blockDim.x);
 
@@ -379,10 +386,8 @@ __syncthreads();</code>
     <br>
     <br>
     After this, the coordinates for which a given thread is responsible are calculated, and whether
-    or not these coordinates are 'in bounds' is determined. Because including the edges of the image
-    in the alignment process would result in incorrect behavior, some percentage is ignored at the
-    edges of the image. For the examples on this page, <code>BORDER_CUT_MARGIN</code> is set to
-    0.075.
+    or not these coordinates are 'in bounds' is determined based on the threshold values calculated
+    above.
     <br>
     <br>
     The final interesting piece here is the declaration of <code>blockErrBuf</code>. This array
@@ -398,9 +403,8 @@ __syncthreads();</code>
     <span class="reserved">if</span> (inBounds)
     {
       <span class="reserved">unsigned long</span> alignImageOffset = (x + alignment->x + i + ((y + alignment->y + j) * imgDims.x));
-      blockErrBuf[blockOffset] = inBounds
-        ? (<span class="reserved">unsigned int</span>) powf((<span class="reserved">short</span>) baseEdges[baseImageOffset] - alignEdges[alignImageOffset], 2)
-        : 0;
+      blockErrBuf[blockOffset] =
+        (<span class="reserved">unsigned int</span>) powf((<span class="reserved">short</span>) baseEdges[baseImageOffset] - alignEdges[alignImageOffset], 2);
     }
     <span class="reserved">else</span>
     {
@@ -556,7 +560,7 @@ cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
         <td>71.7215 ms</td>
         <td>81.7979 ms</td>
         <td>81.8306 ms</td>
-        <td><b></b></td>
+        <td><b>79.7868 ms</b></td>
       </tr>
       <tr>
         <th>Edge Detecting</th>
@@ -596,12 +600,12 @@ cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
       </tr>
       <tr>
         <th>Overall Total</th>
-        <td><b>1.0926 seconds</b></td>
+        <td><b>1.09260 seconds</b></td>
         <td><b>1.09416 seconds</b></td>
         <td><b>1.04862 seconds</b></td>
         <td><b>1.08548 seconds</b></td>
         <td><b>1.09444 seconds</b></td>
-        <td><b></b></td>
+        <td><b>1.08306 seconds</b></td>
       </tr>
     </table>
     <br>
