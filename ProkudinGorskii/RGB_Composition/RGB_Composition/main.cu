@@ -49,23 +49,6 @@ struct PyramidLevel
 };
 
 
-int DEBUG_displayImage(uint8_t* devPtr, short2 imgDims, char* title)
-{
-	auto buf = malloc(imgDims.x * imgDims.y);
-	CUDA_CALL(cudaMemcpy(buf, devPtr, imgDims.x * imgDims.y, cudaMemcpyDeviceToHost), HOST_CPY_FAIL, __LINE__);
-	cv::Mat img(imgDims.y, imgDims.x, CV_8UC1, buf);
-	auto smallSize = imgDims.x > imgDims.y
-		? cv::Size(MAX_SMALL_IMG_DIM, (short) (imgDims.y * (((float) MAX_SMALL_IMG_DIM) / imgDims.x)))
-		: cv::Size((short) (imgDims.x * (((float) MAX_SMALL_IMG_DIM) / imgDims.y)), MAX_SMALL_IMG_DIM);
-	if (imgDims.x < MAX_SMALL_IMG_DIM && imgDims.y < MAX_SMALL_IMG_DIM)
-		smallSize = cv::Size(imgDims.x, imgDims.y);
-	cv::resize(img, img, smallSize);
-	cv::imshow(title, img);
-	cv::waitKey();
-	return SUCCESS;
-}
-
-
 int main(int argc, char** argv)
 {
 	// If too few arguments were provided, print a usage message and exit
