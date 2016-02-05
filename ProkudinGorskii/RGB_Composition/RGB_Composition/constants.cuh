@@ -9,13 +9,21 @@
 
 #pragma once
 
+#include <string>
+
 #include <cuda_runtime.h>
 
 
 // Argument processing
 const unsigned short PNAME_ARG_INDEX = 0;
 const unsigned short IMG_ARG_INDEX = 1;
-const unsigned short EXPECTED_NUM_ARGS = 2;
+const unsigned short ALIGN_MODE_INDEX = 2;
+const unsigned short X_WINDOW_RANGE = 3;
+const unsigned short Y_WINDOW_RANGE = 4;
+const unsigned short EXPECTED_NUM_ARGS = 3;
+const unsigned short EXPECTED_NUM_ARGS_WINDOW = 5;
+const std::string MULTI_LAYER_SPECIFIER = "-m";
+const std::string SINGLE_LAYER_SPECIFIER = "-s";
 
 // Return codes
 const short SUCCESS = 0;
@@ -27,7 +35,7 @@ const short GPU_TIMING_FAIL = -5;
 const short HOST_CPY_FAIL = -6;
 
 // Channel alignment
-__constant__ float BORDER_CUT_MARGIN = 0.075;
+const float BORDER_CUT_MARGIN = 0.075;
 const short NUM_ALIGN_LEVELS = 6;
 const short NUM_ALIGN_NEIGHBORS = 9;
 

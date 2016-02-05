@@ -145,7 +145,7 @@ __global__ void detectEdges(Image red, Image green, Image blue, Image redEdges, 
 }
 
 
-__global__ void alignImages(Image baseEdges, Image alignEdges, short2 imgDims, short2* alignment,
+__global__ void alignImages(Image baseEdges, Image alignEdges, short2 imgDims, short2* alignment, short4 threshold, 
 	unsigned long long* errSumBuf)
 {
 	// Adjust the alignment to account for pyramid steps
@@ -156,20 +156,14 @@ __global__ void alignImages(Image baseEdges, Image alignEdges, short2 imgDims, s
 		memset(errSumBuf, 0, NUM_ALIGN_NEIGHBORS * sizeof(unsigned long long));
 	}
 
-	// Calculate the margin to ignore at this pyramid level
-	const unsigned int leftThreshold   = floor(imgDims.x * BORDER_CUT_MARGIN);
-	const unsigned int rightThreshold  = ceil(imgDims.x * (1 - BORDER_CUT_MARGIN));
-	const unsigned int topThreshold    = floor(imgDims.y * BORDER_CUT_MARGIN);
-	const unsigned int bottomThreshold = ceil(imgDims.y * (1 - BORDER_CUT_MARGIN));
-
 	// Determine the position for which this kernel instance is responsible
-	const unsigned int x = threadIdx.x + (threadIdx.x * blockDim.x);
-	const unsigned int y = threadIdx.y + (threadIdx.y * blockDim.y);
+	const unsigned int x = threadIdx.x + (blockIdx.x * blockDim.x);
+	const unsigned int y = threadIdx.y + (blockIdx.y * blockDim.y);
 	const unsigned long baseImageOffset = x + (y * imgDims.x);
 	const unsigned short blockOffset = threadIdx.x + (threadIdx.y * blockDim.x);
 
 	// Determine whether or not the pixel for which this kernel instance is responsible is in-bounds
-	bool inBounds = x > leftThreshold && x < rightThreshold && y > topThreshold && y < bottomThreshold;
+	bool inBounds = x > threshold.x && x < threshold.y && y > threshold.z && y < threshold.w;
 
 	// Set up the thread-local error buffer
 	__shared__ unsigned int blockErrBuf[THREADS_PER_BLOCK * THREADS_PER_BLOCK];
@@ -184,10 +178,9 @@ __global__ void alignImages(Image baseEdges, Image alignEdges, short2 imgDims, s
 			// If the pixel is in-bounds, compute the squared error; otherwise, set the error equal to 0
 			if (inBounds)
 			{
-				unsigned long alignImageOffset = (x + alignment->x + i + ((y + alignment->y + j) * imgDims.x));
-				blockErrBuf[blockOffset] = inBounds
-					? (unsigned int) powf((short) baseEdges[baseImageOffset] - alignEdges[alignImageOffset], 2)
-					: 0;
+				unsigned long alignImageOffset = x + alignment->x + i + ((y + alignment->y + j) * imgDims.x);
+				blockErrBuf[blockOffset] =
+					(unsigned int) powf((short) baseEdges[baseImageOffset] - alignEdges[alignImageOffset], 2);
 			}
 			else
 			{
@@ -264,4 +257,56 @@ __global__ void produceComposite(Image red, Image green, Image blue, Image compo
 		red[redOffset]*RED_MAPPING[BLUE] +
 		green[greenOffset]*GREEN_MAPPING[BLUE] +
 		blue[blueOffset]*BLUE_MAPPING[BLUE], COLOR_MIN, COLOR_MAX);
+}
+
+
+__global__ void scoreAlignment(Image baseEdges, Image alignEdges, short2 imgDims, short2 alignment, short4 threshold,
+	unsigned long long* errSum)
+{
+	// Zero out the error value
+	if (threadIdx.x == 0 && threadIdx.y == 0 && blockIdx.x == 0 && blockIdx.y == 0)
+		*errSum = 0;
+
+	// Determine the position for which this kernel instance is responsible
+	const unsigned int x = threadIdx.x + (blockIdx.x * blockDim.x);
+	const unsigned int y = threadIdx.y + (blockIdx.y * blockDim.y);
+	const unsigned long baseImageOffset = x + (y * imgDims.x);
+	const unsigned long alignImageOffset = x + alignment.x + ((y + alignment.y) * imgDims.x);
+	const unsigned short blockOffset = threadIdx.x + (threadIdx.y * blockDim.x);
+
+	// Determine whether or not the pixel for which this kernel instance is responsible is in-bounds
+	bool inBounds = x > threshold.x && x < threshold.y && y > threshold.z && y < threshold.w;
+
+	// Set up the thread-local error buffer
+	__shared__ unsigned int blockErrBuf[THREADS_PER_BLOCK * THREADS_PER_BLOCK];
+
+	__syncthreads();
+
+	// If the pixel is in-bounds, compute the squared error; otherwise, set the error equal to 0
+	if (inBounds)
+	{
+		blockErrBuf[blockOffset] = inBounds
+			? (unsigned int) powf((short) baseEdges[baseImageOffset] - alignEdges[alignImageOffset], 2)
+			: 0;
+	}
+	else
+	{
+		blockErrBuf[blockOffset] = 0;
+	}
+
+	__syncthreads();
+
+	// Sum up the block-local error into blockErrBuf[0]
+	unsigned int blockCutoff = THREADS_PER_BLOCK * THREADS_PER_BLOCK / 2;
+	while (blockOffset < blockCutoff)
+	{
+		blockErrBuf[blockOffset] += blockErrBuf[blockOffset + blockCutoff];
+		blockCutoff /= 2;
+	}
+
+	// Sum all of the block-local error values into a central buffer
+	if (threadIdx.x == 0 && threadIdx.y == 0)
+		atomicAdd(errSum, blockErrBuf[0]);
+
+	__syncthreads();
 }

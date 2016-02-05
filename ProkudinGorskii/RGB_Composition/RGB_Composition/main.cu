@@ -16,6 +16,7 @@
 #include <chrono>
 #include <iostream>
 #include <stdint.h>
+#include <string>
 
 // CUDA
 #include <cuda_runtime.h>
@@ -70,7 +71,37 @@ int main(int argc, char** argv)
 	// If too few arguments were provided, print a usage message and exit
 	if (argc < EXPECTED_NUM_ARGS)
 	{
-		std::cout << "Too few arguments provided." << std::endl << "\tUsage: " << argv[PNAME_ARG_INDEX] << " [image]";
+		std::cout << "Too few arguments provided." << std::endl << "\tUsage: " << argv[PNAME_ARG_INDEX] <<
+			" [image] [align mode]" << std::endl;
+		return INCORRECT_USAGE;
+	}
+
+	// Process the provided arguments
+	std::string imageName = argv[IMG_ARG_INDEX];
+	std::string alignModeArg = argv[ALIGN_MODE_INDEX];
+	bool multiLayerAlignMode;
+	short2 alignmentWindow;
+	if (alignModeArg == MULTI_LAYER_SPECIFIER)
+	{
+		multiLayerAlignMode = true;
+	}
+	else if (alignModeArg == SINGLE_LAYER_SPECIFIER)
+	{
+		if (argc < EXPECTED_NUM_ARGS_WINDOW)
+		{
+			std::cout << "To use the single-layer alignment mode, an alignment window must be specified." << std::endl;
+			return INCORRECT_USAGE;
+		}
+		multiLayerAlignMode = false;
+
+		std::string alignWindowX = argv[X_WINDOW_RANGE];
+		std::string alignWindowY = argv[Y_WINDOW_RANGE];
+
+		alignmentWindow = make_short2(std::stoi(alignWindowX, nullptr), std::stoi(alignWindowY, nullptr));
+	}
+	else
+	{
+		std::cout << "Unrecognized alignment mode " << alignModeArg << std::endl;
 		return INCORRECT_USAGE;
 	}
 
@@ -78,7 +109,7 @@ int main(int argc, char** argv)
 	auto startTime = std::chrono::high_resolution_clock::now();
 
 	// Load the specified source image and calculate the dimensions for the resulting composite image
-	auto sourceImage = cv::imread(argv[IMG_ARG_INDEX], CV_LOAD_IMAGE_GRAYSCALE);
+	auto sourceImage = cv::imread(imageName, CV_LOAD_IMAGE_GRAYSCALE);
 	auto compImgDims = make_short2(sourceImage.cols, sourceImage.rows / NUM_CHANNELS);
 	dim3 blockSize(compImgDims.x / THREADS_PER_BLOCK, compImgDims.y / THREADS_PER_BLOCK);
 	dim3 threadSize(THREADS_PER_BLOCK, THREADS_PER_BLOCK);
@@ -133,30 +164,89 @@ int main(int argc, char** argv)
 		compImgDims);
 	CUDA_CALL(cudaEventRecord(edges, 0), GPU_TIMING_FAIL, __LINE__);
 
-	// Calculate the sizes and offsets of each of the image pyramid levels
-	PyramidLevel levels[NUM_ALIGN_LEVELS];
-	levels[0].offset = 0;
-	levels[0].dims = make_short2(compImgDims.x, compImgDims.y);
-	for (short i = 1; i < NUM_ALIGN_LEVELS; ++i)
-	{
-		levels[i].offset = levels[i - 1].offset + (levels[i - 1].dims.x * levels[i - 1].dims.y);
-		levels[i].dims = make_short2(levels[i - 1].dims.x / 2, levels[i - 1].dims.y / 2);
-	}
-
 	// Compute the alignments for the color channels
-	short2 startAlign = make_short2(0, 0);
-	CUDA_CALL(cudaMemcpy(dev_alignGR, &startAlign, sizeof(short2), cudaMemcpyHostToDevice), DEV_CPY_FAIL, __LINE__);
-	CUDA_CALL(cudaMemcpy(dev_alignGB, &startAlign, sizeof(short2), cudaMemcpyHostToDevice), DEV_CPY_FAIL, __LINE__);
-	for (short i = NUM_ALIGN_LEVELS - 1; i >= 0; --i)
+	if (multiLayerAlignMode)
 	{
-		if (levels[i].dims.x < MIN_PYRAMID_SIZE || levels[i].dims.y < MIN_PYRAMID_SIZE)
-			continue;
-		
-		// Perform image alignment
-		alignImages<<<blockSize, threadSize>>>(dev_greenEdges + levels[i].offset,
-			dev_redEdges + levels[i].offset, levels[i].dims, dev_alignGR, dev_errorSum);
-		alignImages<<<blockSize, threadSize>>>(dev_greenEdges + levels[i].offset,
-			dev_blueEdges + levels[i].offset, levels[i].dims, dev_alignGB, dev_errorSum);
+		// Calculate the sizes and offsets of each of the image pyramid levels
+		PyramidLevel levels[NUM_ALIGN_LEVELS];
+		levels[0].offset = 0;
+		levels[0].dims = make_short2(compImgDims.x, compImgDims.y);
+		for (short i = 1; i < NUM_ALIGN_LEVELS; ++i)
+		{
+			levels[i].offset = levels[i - 1].offset + (levels[i - 1].dims.x * levels[i - 1].dims.y);
+			levels[i].dims = make_short2(levels[i - 1].dims.x / 2, levels[i - 1].dims.y / 2);
+		}
+
+		short2 startAlign = make_short2(0, 0);
+		CUDA_CALL(cudaMemcpy(dev_alignGR, &startAlign, sizeof(short2), cudaMemcpyHostToDevice), DEV_CPY_FAIL, __LINE__);
+		CUDA_CALL(cudaMemcpy(dev_alignGB, &startAlign, sizeof(short2), cudaMemcpyHostToDevice), DEV_CPY_FAIL, __LINE__);
+		for (short i = NUM_ALIGN_LEVELS - 1; i >= 0; --i)
+		{
+			if (levels[i].dims.x < MIN_PYRAMID_SIZE || levels[i].dims.y < MIN_PYRAMID_SIZE)
+				continue;
+
+			// Calculate the margin to ignore at this pyramid level
+			const unsigned int leftThreshold   = floor(levels[i].dims.x * BORDER_CUT_MARGIN);
+			const unsigned int rightThreshold  = ceil(levels[i].dims.x * (1 - BORDER_CUT_MARGIN));
+			const unsigned int topThreshold    = floor(levels[i].dims.y * BORDER_CUT_MARGIN);
+			const unsigned int bottomThreshold = ceil(levels[i].dims.y * (1 - BORDER_CUT_MARGIN));
+			short4 threshold = make_short4(leftThreshold, rightThreshold, topThreshold, bottomThreshold);
+
+			// Perform image alignment
+			dim3 pyramidBlockSize(levels[i].dims.x / THREADS_PER_BLOCK, levels[i].dims.y / THREADS_PER_BLOCK);
+			alignImages<<<pyramidBlockSize, threadSize>>>(dev_greenEdges + levels[i].offset,
+				dev_redEdges + levels[i].offset, levels[i].dims, dev_alignGR, threshold, dev_errorSum);
+			alignImages<<<pyramidBlockSize, threadSize>>>(dev_greenEdges + levels[i].offset,
+				dev_blueEdges + levels[i].offset, levels[i].dims, dev_alignGB, threshold, dev_errorSum);
+		}
+	}
+	else
+	{
+		short2 bestAlignmentGR = make_short2(0, 0);
+		short2 bestAlignmentGB = make_short2(0, 0);
+		unsigned long long error[2];
+		unsigned long long bestErrorGR = error[0];
+		unsigned long long bestErrorGB = error[1];
+
+		// Calculate the margin to ignore
+		const unsigned int leftThreshold   = floor(compImgDims.x * BORDER_CUT_MARGIN);
+		const unsigned int rightThreshold  = ceil(compImgDims.x * (1 - BORDER_CUT_MARGIN));
+		const unsigned int topThreshold    = floor(compImgDims.y * BORDER_CUT_MARGIN);
+		const unsigned int bottomThreshold = ceil(compImgDims.y * (1 - BORDER_CUT_MARGIN));
+		short4 threshold = make_short4(leftThreshold, rightThreshold, topThreshold, bottomThreshold);
+
+		short2 trialAlignment;
+		for (short i = -alignmentWindow.x / 2; i < alignmentWindow.x / 2; ++i)
+		{
+			for (short j = -alignmentWindow.y / 2; j < alignmentWindow.y / 2; ++j)
+			{
+				trialAlignment = make_short2(i, j);
+				scoreAlignment<<<blockSize, threadSize>>>(dev_greenEdges, dev_redEdges, compImgDims, trialAlignment,
+					threshold, dev_errorSum);
+				scoreAlignment<<<blockSize, threadSize>>>(dev_greenEdges, dev_blueEdges, compImgDims, trialAlignment,
+					threshold, dev_errorSum + 1);
+
+				CUDA_CALL(cudaMemcpy(&error, dev_errorSum, sizeof(unsigned long long) * 2, cudaMemcpyDeviceToHost),
+					HOST_CPY_FAIL, __LINE__);
+
+				if (error[0] < bestErrorGR)
+				{
+					bestErrorGR = error[0];
+					bestAlignmentGR = make_short2(i, j);
+				}
+				if (error[1] < bestErrorGB)
+				{
+					bestErrorGB = error[1];
+					bestAlignmentGB = make_short2(i, j);
+				}
+			}
+		}
+
+		// Copy the computed alignment to the device
+		CUDA_CALL(cudaMemcpy(dev_alignGR, &bestAlignmentGR, sizeof(short2), cudaMemcpyHostToDevice), DEV_CPY_FAIL,
+			__LINE__);
+		CUDA_CALL(cudaMemcpy(dev_alignGB, &bestAlignmentGB, sizeof(short2), cudaMemcpyHostToDevice), DEV_CPY_FAIL,
+			__LINE__);
 	}
 
 	// Finish producing the composite and perform post-processing
@@ -223,11 +313,11 @@ int main(int argc, char** argv)
 	cv::resize(compositeImage, compSmall, smallSize);
 
 	// Save a full-size and small version of the composite image
-	cv::imwrite(std::string(argv[IMG_ARG_INDEX]) + ".bmp", compositeImage);
-	cv::imwrite(std::string(argv[IMG_ARG_INDEX]) + "_small.bmp", compSmall);
+	cv::imwrite(std::string(imageName) + ".bmp", compositeImage);
+	cv::imwrite(std::string(imageName) + "_small.bmp", compSmall);
 
 	// Display the resulting image
-	cv::imshow(argv[IMG_ARG_INDEX], compSmall);
+	cv::imshow(imageName, compSmall);
 	cv::waitKey();
 
 	// Free remaining memory

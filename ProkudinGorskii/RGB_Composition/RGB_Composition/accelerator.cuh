@@ -22,7 +22,10 @@
  __global__ void generateImagePyramids(Image red, Image green, Image blue, short2 imgDims);
 __global__ void detectEdges(Image red, Image green, Image blue, Image redEdges, Image greenEdges,
 	Image blueEdges, short2 imgDims);
-__global__ void alignImages(Image baseEdges, Image alignEdges, short2 imgDims, short2* alignment,
+__global__ void alignImages(Image baseEdges, Image alignEdges, short2 imgDims, short2* alignment, short4 threshold,
 	unsigned long long* errSumBuf);
 __global__ void produceComposite(Image red, Image green, Image blue, Image composite,
 	short2* grOffset, short2* gbOffset, short2 imgDims);
+
+__global__ void scoreAlignment(Image baseEdges, Image alignEdges, short2 imgDims, short2 alignment, short4 threshold,
+	unsigned long long* errSumBuf);
