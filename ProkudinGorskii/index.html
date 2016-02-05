@@ -295,6 +295,12 @@ cudaMemcpy(dev_blue, blueChannel, channelSize, cudaMemcpyHostToDevice);</code>
 
 
     <h4>Channel Alignment</h4>
+    The discussion in this section is limited to the multi-scale implementation, as the single-scale
+    version is fairly trivial in comparison (simply scanning over a window provided by the user as
+    command line arguments, computing the error for each of the trial alignments, and ultimately
+    selecting the best). Example images from this version of the algorithm can be found below.
+    <br>
+    <br>
     Computing a reasonable alignment is by far the most complicated and computationally expensive
     part of this entire project, and is the only portion of the image composition logic which has
     a non-trivial amount of host-side processing (see the Design Challenges section below for an
@@ -525,7 +531,7 @@ cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
     <h4>Implementation Timing</h4>
     Throughout the code, various timing points were inserted to get a sense for the speed at which
     the GPU was performing all of the work being forced upon it. Overall, the total reported time
-    taken to produce a composite usually fell around 3 seconds; the following table shows timings
+    taken to produce a composite usually fell around 1 second; the following table shows timings
     obtained from several consecutive runs. All of these timings were recorded on a 3-year old GTX
     670; a newer card could likely acheive better results. On top of the card's age, it was also in
     use as the active graphics processor for the system at the time. Additionally, this project
@@ -545,66 +551,66 @@ cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
       </tr>
       <tr>
         <th>Pyramid Building</th>
-        <td>71.7087 ms</td>
-        <td>81.8286 ms</td>
-        <td>81.8282 ms</td>
-        <td>81.7873 ms</td>
-        <td>71.6874 ms</td>
-        <td><b>77.7680 ms</b></td>
+        <td>81.8052 ms</td>
+        <td>81.7789 ms</td>
+        <td>71.7215 ms</td>
+        <td>81.7979 ms</td>
+        <td>81.8306 ms</td>
+        <td><b></b></td>
       </tr>
       <tr>
         <th>Edge Detecting</th>
-        <td>53.6433 ms</td>
-        <td>61.2084 ms</td>
-        <td>61.2130 ms</td>
-        <td>61.2192 ms</td>
-        <td>53.6442 ms</td>
-        <td><b>58.1856 ms</b></td>
+        <td>61.2074 ms</td>
+        <td>61.1975 ms</td>
+        <td>53.6385 ms</td>
+        <td>61.198 ms</td>
+        <td>61.2023 ms</td>
+        <td><b>59.6887 ms</b></td>
       </tr>
       <tr>
         <th>Channel Aligning</th>
-        <td>1491.41 ms</td>
-        <td>1500.34 ms</td>
-        <td>1507.14 ms</td>
-        <td>1502.23 ms</td>
-        <td>1483.05 ms</td>
-        <td><b>1496.83 ms</b></td>
+        <td>315.096 ms</td>
+        <td>311.883 ms</td>
+        <td>296.707 ms</td>
+        <td>315.213 ms</td>
+        <td>312.509 ms</td>
+        <td><b>310.282 ms</b></td>
       </tr>
       <tr>
         <th>Image Compositing</th>
-        <td>18.7402 ms</td>
-        <td>18.7836 ms</td>
-        <td>18.7811 ms</td>
-        <td>18.7630 ms</td>
-        <td>18.5305 ms</td>
-        <td><b>18.7197 ms</b></td>
+        <td>18.7537 ms</td>
+        <td>18.7283 ms</td>
+        <td>18.5132 ms</td>
+        <td>18.7376 ms</td>
+        <td>18.7404 ms</td>
+        <td><b>18.6946 ms</b></td>
       </tr>
       <tr>
         <th>Total GPU Time</th>
-        <td>1635.51 ms</td>
-        <td>1662.16 ms</td>
-        <td>1668.96 ms</td>
-        <td>1664.00 ms</td>
-        <td>1626.91 ms</td>
-        <td><b>1651.51 ms</b></td>
+        <td>476.863 ms</td>
+        <td>473.588 ms</td>
+        <td>440.580 ms</td>
+        <td>476.946 ms</td>
+        <td>474.282 ms</td>
+        <td><b>468.452 ms</b></td>
       </tr>
       <tr>
         <th>Overall Total</th>
-        <td><b>2.23062 seconds</b></td>
-        <td><b>3.25326 seconds</b></td>
-        <td><b>3.26184 seconds</b></td>
-        <td><b>3.25979 seconds</b></td>
-        <td><b>2.21317 seconds</b></td>
-        <td><b>2.84374 seconds</b></td>
+        <td><b>1.0926 seconds</b></td>
+        <td><b>1.09416 seconds</b></td>
+        <td><b>1.04862 seconds</b></td>
+        <td><b>1.08548 seconds</b></td>
+        <td><b>1.09444 seconds</b></td>
+        <td><b></b></td>
       </tr>
     </table>
     <br>
-    As is clear from the table above, computing the alignment was literally orders of magnitude
-    slower than the other components of the implementation, taking roughly half of the computation
-    time on its own (much of which was spent on the GPU itself; because tasks execute on the GPU
-    asynchronously relative to the CPU, the stream of work for the GPU to work on was likely
-    continually saturated, meaning that much of that time would have been spent actively working
-    within a kernel).
+    As is clear from the table above, computing the alignment was by far the slowest part of the
+    computation (accounting for roughly two thirds of the time spent on the GPU), but still managed
+    to be relatively efficient. With more time and experience, it would likely be possible to cut
+    these numbers down even further (for instance, alignment for both channels could be combined
+    into a single kernel call, but I did not have enough time to commit to fully and safely
+    refactoring the code to make this happen).
 
   <hr>
 
@@ -614,6 +620,8 @@ cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
     All of the images below can be clicked to open the full-size version.
   </p>
   
+  <h4>Multi-scale Implementation Examples</h4>
+
   <figure>
     <a href="images/large/00904u.tif.bmp">
       <img src="images/small/00904u.tif_small.bmp" alt="Pillars composite" />
@@ -691,6 +699,32 @@ cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
     did not have the time to dedicate to implementing those features for this project (as
     those features would have effectively amounted to a full project in and of themselves).
   </p>
+    
+  <h4>Single-scale Implementatio Examples</h4>
+
+  <figure>
+    <a href="images/singleLayer/00904u.tif.bmp">
+      <img src="images/singleLayer/00904u.tif_small.bmp" alt="Field composite" />
+    </a>
+    <figcaption>Green/Red: (-20, -23), Green/Blue: (21, 21)</figcaption>
+  </figure>
+
+  <figure>
+    <a href="images/singleLayer/01520.tif.bmp">
+      <img src="images/singleLayer/01520.tif_small.bmp" alt="Field composite" />
+    </a>
+    <figcaption>Green/Red: (-20, -23), Green/Blue: (21, 21)</figcaption>
+  </figure>
+
+  <p>
+  Both of these examples were computed across a 50x50 window. Computation took well over a minute to
+  complete, and the results are (at best) only marginally improved relative to the greedy approach
+  outlined above. In particular, the image on the right is dramatically worsened by the single-layer
+  approach: because the images are aligned by their edges, and so many high-frequency edges are
+  present in the images, the aligning process struggles to differentiate signal (e.g. the low
+  frequency features, such ass the outline of the man) from the noise (the individual leaves in the
+  background).
+  </p>
 
   <hr>
 
@@ -723,7 +757,7 @@ cv::Mat compositeImage(compImgDims.y, compImgDims.x, CV_8UC3, compBuf);</code>
     which take too long to execute are unceremoniously killed by the OS without much in the way of
     warning. In particular, the image alignment kernel needed to be divided into multiple
     invocations; attempting to perform the alignment in a single call invariably resulted in a
-    timeout, invalidating the memory and cuasing the program to fail.
+    timeout, invalidating the memory and causing the program to fail.
     <br>
     <br>
     CUDA issues aside, by far the most challenging part of this assignment was the computation of
