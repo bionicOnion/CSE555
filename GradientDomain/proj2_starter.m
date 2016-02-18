@@ -7,7 +7,7 @@ DO_COLOR2GRAY = false;
 if DO_TOY 
     toyim = im2double(imread('./samples/toy_problem.png')); 
     % im_out should be approximately the same as toyim
-    im_out = toy_reconstruct(toyim);   % you need to write this function, toy_reconstruct
+    im_out = toy_reconstruct(toyim);
     disp(['Error: ' num2str(sqrt(sum((toyim(:)-im_out(:)).^2)))])
 end
 
