@@ -54,44 +54,95 @@
 
   <hr>
 
-  <!-- IMPLEMENTATION -->
-  <h3>Implementation</h3>
+  <!-- GRADIENT RECONSTRUCTION -->
+  <h3>Reconstruction from Gradients</h3>
   <p>
-    Given the modular nature of this project, the implementation details have been seperated into
-    multiple components by section.
+    Logically speaking, the task of reconstructing an image means finding a set of pixel values
+    which will have the same gradient as the source image and which has the same value at a given
+    reference point. These constraints can be represented cleanly as a system of equations; MATLAB
+    provides some excellent utilities for working with systems of equations using sparse matrices.
+    This means that the entire process of reconstruction amounts to creating these constraints,
+    solving for the values which satisfy them, and then convrting the obtained solution vector back
+    into an image.
+    <br><br>
+    The system of equations (when represented in the form of matrices) appears as <i>Av = b</i>,
+    where <i>A</i> and <i>b</i> are the provided constraints and <i>v</i> are the variables to be
+    solved for. In MATLAB, these matrices are prepared as follows:
+    <br><br>
+    <div class="codeWrapper">
+<code>[height, width] = size(image); 
+pixelIndices = zeros(height, width); 
+pixelIndices(1:height*width) = 1:height*width;
 
-    <!-- Gradient Reconstruction -->
-    <h4>Reconstruction from Gradients</h4>
+A = sparse(height * width * 2 - height - width + 1, height * width);
+b = sparse(height * width * 2 - height - width + 1, 1);</code>
+    </div>
+    <br>
+    These matrices are declared to be sparse as a means of saving on both memory and processing
+    usage; MATLAB considers all of the unspecified values in a sparse matrix to be 0, meaning that
+    operations on the matrix can be completed much more efficiently by simply skipping over the
+    majority of values (considering only the ones which have been explicitly specified). The two
+    matrices are sized to hold the precise number of constraints that that will be provided, given
+    in the code below:
+    <br><br>
+    <div class="codeWrapper">
+<code><span class="reserved">for</span>  x = 1:width-1
+  <span class="reserved">for</span>  y = 1:height
+    e = e + 1;
+    A(e, pixelIndices(y,x+1)) = 1;
+    A(e, pixelIndices(y,x)) = -1;
+    b(e) = image(y,x+1) - image(y,x);
+  <span class="reserved">end</span> 
+<span class="reserved">end</span> 
 
+<span class="reserved">for</span> x = 1:width
+  <span class="reserved">for</span>  y = 1:height-1
+    e = e + 1;
+    A(e, pixelIndices(y+1,x)) = 1;
+    A(e, pixelIndices(y,x)) = -1;
+    b(e) = image(y+1,x) - image(y,x);
+  <span class="reserved">end</span> 
+<span class="reserved">end</span> 
 
-    <!-- Poisson Blending -->
-    <h4>Poisson Blending</h4>
-
-
-    <!-- Mixed-Gradient Blending -->
-    <h4>Blending with Mixed Gradients</h4>
-
-
+e = e + 1
+A(e, pixelIndices(1,1)) = 1;
+b(e) = image(1,1);</code>
+    </div>
+    <br>
+    The first and second segments of this code govern the gradient in the horizontal and vertical
+    directions respectively; the third piece specifies that the value of the top left pixel nees to
+    be the same in both the source and target images (thus setting the reference point for the
+    reconstruction). The value of <code>e</code> starts at 0 and is used to uniquely identify
+    contstraints.
+    <br><br>
+    Once these constraints have been fully specified, the last piece is to solve for the correct
+    values and reshape the solution vector into the expected image dimensions:
+    <br><br>
+    <div class="codeWrapper">
+<code>reconstructed = full(reshape(A \ b, [width, height]));</code>
+    </div>
+    <br>
+    In one line, this code first solves the system of equations, then reshapes the vector into a
+    matrix with the same dimensions as the source image, and finally converts from a sparse matrix
+    into a fully-defined matrix (which MATLAB requires for image data).
+    <br><br>
+    <b>TODO&mdash;PUT EXAMPLES AND RESULTS HERE</b>
   </p>
 
   <hr>
 
-  <!-- SOME EXAMPLES -->
-  <h3>Sample Output</h3>
+  <!-- POISSON BLENDING -->
+  <h3>Poisson Blending</h3>
   <p>
-    As before, output has been divided into three sections to demonstrate the results of each of the
-    sub-components of the project individually.
+    
+  </p>
 
-    <!-- Gradient Reconstruction -->
-    <h4>Reconstruction from Gradients</h4>
+  <hr>
 
-
-    <!-- Poisson Blending -->
-    <h4>Poisson Blending</h4>
-
-
-    <!-- Mixed-Gradient Blending -->
-    <h4>Blending with Mixed Gradients</h4>
+  <!-- MIXED-GRADIENT BLENDING -->
+  <h3>Blending with Mixed Gradients</h3>
+  <p>
+    
   </p>
 
   <hr>
@@ -114,6 +165,9 @@
 
   <!-- EXTRA CREDIT -->
   <h3>Extra Credit</h3>
+  <p>
+    
+  </p>
 
   
 </body>
