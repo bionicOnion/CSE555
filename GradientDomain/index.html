@@ -24,7 +24,32 @@
   <!-- PROJECT OVERVIEW -->
   <h3>Project Overview</h3>
   <p>
-
+    When working with images, it is often easiest to represent them by their gradients rather than
+    by specific pixel values: it is often more important to analyze and affect how pixels relate to
+    one another than it is to use the intensity. As such, this project relates to several smaller
+    components related to working with images in the domain of gradients.
+    <br><br>
+    The first of these sub-projects relates to rebuilding an image from its gradient and a single
+    reference value. Because the image gradient effectively gives the difference between the value
+    at a given pixel and the values of its neighbors, the values for all of a given pixels neighbors
+    can be computed from its value and the value of the gradient at that point; when the method of
+    reconstruction is applied across the entire image (in this context through the use of a system
+    of equations), it is possible to accurately recover the entirety of the base image.
+    <br><br>
+    The second sub-project involved the implementation of Poisson blending to smoothly combine
+    elements from multiple images into a single, seamless, and (hopefully) natural-looking combined
+    image. To do so, the gradients from the two images are combined in such a way that they flow
+    into one another cleanly; this will affect the color and intensity of the blended images, but
+    the shapeand gradient of the image will be maintained (and, as stated above, the image gradient
+    is usually more important than color or intensity).
+    <br><br>
+    The third component modifies the implementation of Poisson blending to preserve the gradient
+    with the larger magnitude, potentially resulting in more naturalistic combinations of images
+    which preserve more of the texture of the two images (rather than cutting a whole in one and
+    plugging in the other).
+    <br><br>
+    In addition to these components, some other, smaller applications of gradient-domain processing
+    were implemented as extra credit (described in the Extra Credit section below).
   </p>
 
   <hr>
@@ -32,6 +57,20 @@
   <!-- IMPLEMENTATION -->
   <h3>Implementation</h3>
   <p>
+    Given the modular nature of this project, the implementation details have been seperated into
+    multiple components by section.
+
+    <!-- Gradient Reconstruction -->
+    <h4>Reconstruction from Gradients</h4>
+
+
+    <!-- Poisson Blending -->
+    <h4>Poisson Blending</h4>
+
+
+    <!-- Mixed-Gradient Blending -->
+    <h4>Blending with Mixed Gradients</h4>
+
 
   </p>
 
@@ -40,7 +79,19 @@
   <!-- SOME EXAMPLES -->
   <h3>Sample Output</h3>
   <p>
+    As before, output has been divided into three sections to demonstrate the results of each of the
+    sub-components of the project individually.
 
+    <!-- Gradient Reconstruction -->
+    <h4>Reconstruction from Gradients</h4>
+
+
+    <!-- Poisson Blending -->
+    <h4>Poisson Blending</h4>
+
+
+    <!-- Mixed-Gradient Blending -->
+    <h4>Blending with Mixed Gradients</h4>
   </p>
 
   <hr>
