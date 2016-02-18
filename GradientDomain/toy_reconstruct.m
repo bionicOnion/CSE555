@@ -7,15 +7,17 @@ function [reconstructed] = toy_reconstruct(image)
 
     % Obtain the indices of the source image and initialize a vector of
     %   indices into the image
-    [height, width, channels] = size(image); 
+    [height, width] = size(image); 
     pixelIndices = zeros(height, width); 
     pixelIndices(1:height*width) = 1:height*width;
     
     % Initialize the equation counter to 0
     e = 0;
     
-    A = zeros(height * width * 2 + 1,height * width * 2 + 1);
-    b = zeros(height * width * 2 + 1,height * width * 2 + 1);
+    % Initalize the constraint matrices (using sparse matrices since the
+    %   vast majority of values in the matrices will be zeros)
+    A = sparse(height * width * 2 + 1, height * width);
+    b = sparse(height * width * 2 + 1, 1);
     
     % Set up the first constraint: equivalence of the horizontal components
     %   of the gradients
@@ -42,13 +44,12 @@ function [reconstructed] = toy_reconstruct(image)
     % Set up the third constraint: the top left pixel of the reconstructed
     %   image should have the same intensity as the pixel at the same
     %   location in the source image
-    e = e + 1;
+    e = e + 1
     A(e, pixelIndices(1,1)) = 1;
     b(e) = image(1,1);
 
-    % Use the constraints above to solve for the reconstructed image
-    reconstructed = A \ b;
-    
-    keyboard;
+    % Use the constraints above to solve for the reconstructed image,
+    %   reshaping it to match the dimensions of the source image
+    reconstructed = full(reshape(lscov(A, b), [width, height]));
 end
 
