@@ -1,6 +1,6 @@
 % starter script for project 3
-DO_TOY = true;
-DO_BLEND = false;
+DO_TOY = false;
+DO_BLEND = true;
 DO_MIXED  = false;
 DO_COLOR2GRAY = false;
 
@@ -22,7 +22,7 @@ if DO_BLEND
     [im_s, mask_s] = alignSource(im_object, objmask, im_background);
 
     % blend
-    im_blend = poissonBlend(im_s, mask_s, im_background);   % you need to write this.
+    im_blend = poissonBlend(im_s, mask_s, im_background);
     figure(3), hold off, imshow(im_blend)
 end
 
