@@ -1,7 +1,7 @@
 % starter script for project 3
 DO_TOY = false;
 DO_BLEND = true;
-DO_MIXED  = false;
+DO_MIXED  = true;
 DO_COLOR2GRAY = false;
 
 if DO_TOY 
@@ -32,12 +32,12 @@ if DO_MIXED
     
     % blend
     im_blend = mixedBlend(im_s, mask_s, im_background);     % you need to write this.
-    figure(3), hold off, imshow(im_blend);
+    figure(4), hold off, imshow(im_blend);
 end
 
 if DO_COLOR2GRAY
     % also feel welcome to try this on some natural images and compare to rgb2gray
     im_rgb = im2double(imread('./images/colorBlindTest35.png'));
     im_gr = color2gray(im_rgb);
-    figure(4), hold off, imagesc(im_gr), axis image, colormap gray
+    figure(5), hold off, imagesc(im_gr), axis image, colormap gray
 end
