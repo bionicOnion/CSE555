@@ -29,44 +29,44 @@ function [ blended_img ] = poissonBlend(object, mask, target)
                     e = e + 1;
                     if ~mask(y,x-1)
                         A(e, pixelIndices(y,x)) = 1;
-                        b(e) = target(y,x,c) - target(y,x-1,c) + object(y,x-1,c);   
+                        b(e) = object(y,x,c) - object(y,x-1,c) + target(y,x-1,c);   
                     else
                         A(e, pixelIndices(y,x)) = 1;
                         A(e, pixelIndices(y,x-1)) = -1;
-                        b(e) = target(y,x,c) - target(y,x-1,c);
+                        b(e) = object(y,x,c) - object(y,x-1,c);
                     end
                     
                     % Right neighbor
                     e = e + 1;
                     if ~mask(y,x+1)
                         A(e, pixelIndices(y,x)) = 1;
-                        b(e) = target(y,x,c) - target(y,x+1,c) + object(y,x+1,c);
+                        b(e) = object(y,x,c) - object(y,x+1,c) + target(y,x+1,c);
                     else
                         A(e, pixelIndices(y,x)) = 1;
                         A(e, pixelIndices(y,x+1)) = -1;
-                        b(e) = target(y,x,c) - target(y,x+1,c);
+                        b(e) = object(y,x,c) - object(y,x+1,c);
                     end
                     
                     % Top neighbor
                     e = e + 1;
                     if ~mask(y-1,x)
                         A(e, pixelIndices(y,x)) = 1;
-                        b(e) = target(y,x,c) - target(y-1,x,c) + object(y-1,x,c);   
+                        b(e) = object(y,x,c) - object(y-1,x,c) + target(y-1,x,c);   
                     else
                         A(e, pixelIndices(y,x)) = 1;
                         A(e, pixelIndices(y-1,x)) = -1;
-                        b(e) = target(y,x,c) - target(y-1,x,c);
+                        b(e) = object(y,x,c) - object(y-1,x,c);
                     end
                     
                     % Bottom neighbor
                     e = e + 1;
                     if ~mask(y+1,x)
                         A(e, pixelIndices(y,x)) = 1;
-                        b(e) = target(y,x,c) - target(y+1,x,c) + object(y+1,x,c);   
+                        b(e) = object(y,x,c) - object(y+1,x,c) + target(y+1,x,c);   
                     else
                         A(e, pixelIndices(y,x)) = 1;
                         A(e, pixelIndices(y+1,x)) = -1;
-                        b(e) = target(y,x,c) - target(y+1,x,c);
+                        b(e) = object(y,x,c) - object(y+1,x,c);
                     end
                 end
             end
