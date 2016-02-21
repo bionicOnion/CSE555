@@ -9,8 +9,8 @@ function [blendedImg] = blendImages(targetImage, sourceImage, mode)
     end
     
     % Load the specified images
-    source = im2double(imread(sourceImage));
-    target = im2double(imread(targetImage));
+    source = imresize(im2double(imread(sourceImage)), 0.25, 'bilinear');
+    target = imresize(im2double(imread(targetImage)), 0.25, 'bilinear');
 
     % Generate a user-specified blending mask
     mask = getMask(source);
