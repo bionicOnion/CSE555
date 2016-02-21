@@ -78,4 +78,6 @@ function [grayscale] = color2gray(image)
     end
     
     grayscale = full(reshape(A \ b, [height, width]));
+    grayscale = grayscale - min(min(grayscale));
+    grayscale = grayscale / max(max(grayscale));
 end

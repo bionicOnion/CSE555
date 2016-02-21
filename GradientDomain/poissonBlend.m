@@ -11,14 +11,14 @@ function [ blended_img ] = poissonBlend(object, mask, target)
     
     blended_img = zeros(size(target));
     
+    % Initalize the constraint matrices (using sparse matrices since the vast majority of values
+    %   in the matrices will be zeros)
+    A = spalloc(size(find(mask),1) * 4, height * width, size(find(mask),1) * 4);
+    b = zeros(size(find(mask),1) * 4, 1);
+    
     for c = 1:channels
         % Initalize the equation counter to 0
         e = 0;
-        
-        % Initalize the constraint matrices (using sparse matrices since the vast majority of values
-        %   in the matrices will be zeros)
-        A = sparse(size(find(mask),1) * 4, height * width);
-        b = zeros(size(find(mask),1) * 4, 1);
         
         % Set up the constraints to be solved
         for x = 2:width-1
@@ -27,44 +27,40 @@ function [ blended_img ] = poissonBlend(object, mask, target)
                 if mask(y,x)
                     % Left neighbor
                     e = e + 1;
+                    A(e, pixelIndices(y,x)) = 1;
                     if ~mask(y,x-1)
-                        A(e, pixelIndices(y,x)) = 1;
                         b(e) = object(y,x,c) - object(y,x-1,c) + target(y,x-1,c);   
                     else
-                        A(e, pixelIndices(y,x)) = 1;
                         A(e, pixelIndices(y,x-1)) = -1;
                         b(e) = object(y,x,c) - object(y,x-1,c);
                     end
                     
                     % Right neighbor
                     e = e + 1;
+                    A(e, pixelIndices(y,x)) = 1;
                     if ~mask(y,x+1)
-                        A(e, pixelIndices(y,x)) = 1;
                         b(e) = object(y,x,c) - object(y,x+1,c) + target(y,x+1,c);
                     else
-                        A(e, pixelIndices(y,x)) = 1;
                         A(e, pixelIndices(y,x+1)) = -1;
                         b(e) = object(y,x,c) - object(y,x+1,c);
                     end
                     
                     % Top neighbor
                     e = e + 1;
+                    A(e, pixelIndices(y,x)) = 1;
                     if ~mask(y-1,x)
-                        A(e, pixelIndices(y,x)) = 1;
                         b(e) = object(y,x,c) - object(y-1,x,c) + target(y-1,x,c);   
                     else
-                        A(e, pixelIndices(y,x)) = 1;
                         A(e, pixelIndices(y-1,x)) = -1;
                         b(e) = object(y,x,c) - object(y-1,x,c);
                     end
                     
                     % Bottom neighbor
                     e = e + 1;
+                    A(e, pixelIndices(y,x)) = 1;
                     if ~mask(y+1,x)
-                        A(e, pixelIndices(y,x)) = 1;
                         b(e) = object(y,x,c) - object(y+1,x,c) + target(y+1,x,c);   
                     else
-                        A(e, pixelIndices(y,x)) = 1;
                         A(e, pixelIndices(y+1,x)) = -1;
                         b(e) = object(y,x,c) - object(y+1,x,c);
                     end
@@ -77,13 +73,7 @@ function [ blended_img ] = poissonBlend(object, mask, target)
         blended_img(:,:,c) = full(reshape(A \ b, [height, width]));
     end
     
-    for x = 1:width
-        for y = 1:height
-            if ~mask(y,x)
-                % Copy over pixels from the original image outside of the blended area
-                blended_img(y,x,:) = target(y,x,:);
-            end
-        end
-    end
+    % Copy the source image directly if outside of the blended region
+    blended_img(~repmat(mask,[1,1,channels])) = target(~repmat(mask,[1,1,channels]));
 end
 

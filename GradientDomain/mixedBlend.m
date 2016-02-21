@@ -34,11 +34,10 @@ function [ blended_img ] = mixedBlend(object, mask, target)
                         strongestGrad = trgGrad;
                     end
                     e = e + 1;
+                    A(e, pixelIndices(y,x)) = 1;
                     if ~mask(y,x-1)
-                        A(e, pixelIndices(y,x)) = 1;
                         b(e) = strongestGrad + target(y,x-1,c);   
                     else
-                        A(e, pixelIndices(y,x)) = 1;
                         A(e, pixelIndices(y,x-1)) = -1;
                         b(e) = strongestGrad;
                     end
@@ -52,11 +51,10 @@ function [ blended_img ] = mixedBlend(object, mask, target)
                         strongestGrad = trgGrad;
                     end
                     e = e + 1;
+                    A(e, pixelIndices(y,x)) = 1;
                     if ~mask(y,x+1)
-                        A(e, pixelIndices(y,x)) = 1;
                         b(e) = strongestGrad + target(y,x+1,c);
                     else
-                        A(e, pixelIndices(y,x)) = 1;
                         A(e, pixelIndices(y,x+1)) = -1;
                         b(e) = strongestGrad;
                     end
@@ -70,11 +68,10 @@ function [ blended_img ] = mixedBlend(object, mask, target)
                         strongestGrad = trgGrad;
                     end
                     e = e + 1;
+                    A(e, pixelIndices(y,x)) = 1;
                     if ~mask(y-1,x)
-                        A(e, pixelIndices(y,x)) = 1;
                         b(e) = strongestGrad + target(y-1,x,c);   
                     else
-                        A(e, pixelIndices(y,x)) = 1;
                         A(e, pixelIndices(y-1,x)) = -1;
                         b(e) = strongestGrad;
                     end
@@ -88,11 +85,10 @@ function [ blended_img ] = mixedBlend(object, mask, target)
                         strongestGrad = trgGrad;
                     end
                     e = e + 1;
+                    A(e, pixelIndices(y,x)) = 1;
                     if ~mask(y+1,x)
-                        A(e, pixelIndices(y,x)) = 1;
                         b(e) = strongestGrad + target(y+1,x,c);   
                     else
-                        A(e, pixelIndices(y,x)) = 1;
                         A(e, pixelIndices(y+1,x)) = -1;
                         b(e) = strongestGrad;
                     end
@@ -105,14 +101,7 @@ function [ blended_img ] = mixedBlend(object, mask, target)
         blended_img(:,:,c) = full(reshape(A \ b, [height, width]));
     end
     
-    for x = 1:width
-        for y = 1:height
-            if ~mask(y,x)
-                % Copy over pixels from the original image outside of the blended area
-                blended_img(y,x,:) = target(y,x,:);
-            end
-        end
-    end
-
+    % Copy the source image directly if outside of the blended region
+    blended_img(~repmat(mask_s,[1,1,channels])) = im_background(~repmat(mask_s,[1,1,channels]));
 end
 

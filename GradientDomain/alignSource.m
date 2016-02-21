@@ -26,4 +26,5 @@ im_t(repmat(mask2, [1 1 3])) = im_s2(repmat(mask2, [1 1 3]));
 
 figure(1), hold off, imagesc(im_s2), axis image;
 figure(2), hold off, imagesc(im_t), axis image;
+
 drawnow;
