@@ -17,8 +17,8 @@ function [ blended_img ] = mixedBlend(object, mask, target)
         
         % Initalize the constraint matrices (using sparse matrices since the vast majority of values
         %   in the matrices will be zeros)
-        A = sparse(height * width * 4, height * width);
-        b = sparse(height * width * 4, 1);
+        A = sparse(size(find(mask),1) * 4, height * width);
+        b = zeros(size(find(mask),1) * 4, 1);
         
         % Set up the constraints to be solved
         for x = 2:width-1
