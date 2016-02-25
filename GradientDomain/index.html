@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>CSE 555: Project 2</title>
   <link rel="stylesheet" href="../cse555.css">
+  <script type="text/javascript" src="http://latex.codecogs.com/latexit.js"></script>
 </head>
 <body>
   <h1>CSE 555: Project 2</h1>
@@ -16,6 +17,8 @@
     ||
     <a href="http://www.cse.wustl.edu/~pless/classes/555/">Course Website</a>
     <br>
+    <br>
+    <img src="images/blending/ufo_blended.jpeg" alt="CSE 555: Project 2" />
     <br>
   </div>
 
@@ -48,8 +51,10 @@
     which preserve more of the texture of the two images (rather than cutting a whole in one and
     plugging in the other).
     <br><br>
-    In addition to these components, some other, smaller applications of gradient-domain processing
-    were implemented as extra credit (described in the Extra Credit section below).
+    In addition to these components, an alternative function for transitioning from RGB-space to
+    grayscale was written which better preserves the original edges and contrasts of the original
+    image (at the cost of accurate representations of intensity). This function is described in the
+    Extra Credit section.
   </p>
 
   <hr>
@@ -70,7 +75,7 @@
     solved for. In MATLAB, these matrices are prepared as follows:
     <br><br>
     <div class="codeWrapper">
-<code>[height, width] = size(image); 
+<code>[height, width, channels] = size(image); 
 pixelIndices = zeros(height, width); 
 pixelIndices(1:height*width) = 1:height*width;
 
@@ -83,7 +88,8 @@ b = sparse(height * width * 2 - height - width + 1, 1);</code>
     operations on the matrix can be completed much more efficiently by simply skipping over the
     majority of values (considering only the ones which have been explicitly specified). The two
     matrices are sized to hold the precise number of constraints that that will be provided, given
-    in the code below:
+    in the code below (where <code>c</code> is a variable corresponding to the current color channel
+    being reconstructed):
     <br><br>
     <div class="codeWrapper">
 <code><span class="reserved">for</span>  x = 1:width-1
@@ -91,7 +97,7 @@ b = sparse(height * width * 2 - height - width + 1, 1);</code>
     e = e + 1;
     A(e, pixelIndices(y,x+1)) = 1;
     A(e, pixelIndices(y,x)) = -1;
-    b(e) = image(y,x+1) - image(y,x);
+    b(e) = image(y,x+1,c) - image(y,x,c);
   <span class="reserved">end</span> 
 <span class="reserved">end</span> 
 
@@ -100,33 +106,68 @@ b = sparse(height * width * 2 - height - width + 1, 1);</code>
     e = e + 1;
     A(e, pixelIndices(y+1,x)) = 1;
     A(e, pixelIndices(y,x)) = -1;
-    b(e) = image(y+1,x) - image(y,x);
+    b(e) = image(y+1,x,c) - image(y,x,c);
   <span class="reserved">end</span> 
 <span class="reserved">end</span> 
 
 e = e + 1
 A(e, pixelIndices(1,1)) = 1;
-b(e) = image(1,1);</code>
+b(e) = image(1,1,c);</code>
     </div>
     <br>
     The first and second segments of this code govern the gradient in the horizontal and vertical
     directions respectively; the third piece specifies that the value of the top left pixel nees to
     be the same in both the source and target images (thus setting the reference point for the
     reconstruction). The value of <code>e</code> starts at 0 and is used to uniquely identify
-    contstraints.
+    constraints.
     <br><br>
     Once these constraints have been fully specified, the last piece is to solve for the correct
     values and reshape the solution vector into the expected image dimensions:
     <br><br>
     <div class="codeWrapper">
-<code>reconstructed = full(reshape(A \ b, [width, height]));</code>
+<code>reconstructed(:,:,c) = full(reshape(A \ b, [width, height]));</code>
     </div>
     <br>
     In one line, this code first solves the system of equations, then reshapes the vector into a
     matrix with the same dimensions as the source image, and finally converts from a sparse matrix
     into a fully-defined matrix (which MATLAB requires for image data).
     <br><br>
-    <b>TODO&mdash;PUT EXAMPLES AND RESULTS HERE</b>
+
+    <figure>
+      <a href="mages/src_images/toy_problem.png">
+        <img src="images/src_images/toy_problem.png" alt="Original image" />
+      </a>
+      <figcaption>The original image</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/reconstructed/toy_reconstructed.jpeg">
+        <img src="images/reconstructed/toy_reconstructed.jpeg" alt="Reconstructed image" />
+      </a>
+      <figcaption>The computed reconstruction</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/src_images/penguin_source.jpeg">
+        <img src="images/src_images/penguin_source.jpeg" alt="Original multi-channel image" />
+      </a>
+      <figcaption>An original image with multiple color channels</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/reconstructed/penguin_recon.jpeg">
+        <img src="images/reconstructed/penguin_recon.jpeg" alt="Reconstructed multi-channel image" />
+      </a>
+      <figcaption>The computed multi-channel reconstruction</figcaption>
+    </figure>
+
+    As can be seen in the images above, this methodology is capable of more or less exactly
+    reproducing the source image. Some insignificant error is present in the comparison between the
+    two images done in the provided test script (which computes the squared error of the two images)
+    which is likely the result of either floating point rounding issues&mdash;and is small enough to
+    be insignificant regardless of cause.
   </p>
 
   <hr>
@@ -134,7 +175,244 @@ b(e) = image(1,1);</code>
   <!-- POISSON BLENDING -->
   <h3>Poisson Blending</h3>
   <p>
+    The intuition behind Poisson blending is rather similar to the intuition of the image
+    reconstruction process discussed in the previous section: the gradients of two images are mixed
+    seamlessly into one another and the resulting gradient is then "reconstructed" into an image
+    using the same methodology described above. The constraints are given by the following equation:
+    <br><br>
+    <div lang="latex">
+      v = \underset{v}{\operatorname{argmin}}
+        \sum_{i \in S,j \in N_i \cap S}((v_i - v_j) - (s_i - s_j))^2 +
+        \sum_{i \in S,j \in N_i \cap \neg S} ((v_i - t_j) - (s_i - s_j))^2
+    </div>
+    <br><br>
+    As before, this will be implemented with matrices of constraints which are then solved as a
+    system of equations to produce a blended image. As such, only the constraint code is given here;
+    the remainder of the function looks strikingly similar to the implementation shown above:
+    <br><br>
+    <div class="codeWrapper">
+<code><span class="reserved">if</span> mask(y,x)
+    e = e + 1;
+    A(e, pixelIndices(y,x)) = 1;
+    b(e) = object(y,x,c) - object(y,x-1,c);
+    <span class="reserved">if</span> mask(y,x-1)
+        A(e, pixelIndices(y,x-1)) = -1;
+    <span class="reserved">else</span>
+        b(e) = b(e) + target(y,x-1,c);
+    <span class="reserved">end</span>
     
+    e = e + 1;
+    A(e, pixelIndices(y,x)) = 1;
+    b(e) = object(y,x,c) - object(y,x+1,c);
+    <span class="reserved">if</span> mask(y,x+1)
+        A(e, pixelIndices(y,x+1)) = -1;
+    <span class="reserved">else</span>
+        b(e) = b(e) + target(y,x+1,c);
+    <span class="reserved">end</span>
+    
+    e = e + 1;
+    A(e, pixelIndices(y,x)) = 1;
+    b(e) = object(y,x,c) - object(y-1,x,c);
+    <span class="reserved">if</span> mask(y-1,x)
+        A(e, pixelIndices(y-1,x)) = -1;
+    <span class="reserved">else</span>
+        b(e) = b(e) + target(y-1,x,c);
+    <span class="reserved">end</span>
+    
+    e = e + 1;
+    A(e, pixelIndices(y,x)) = 1;
+    b(e) = object(y,x,c) - object(y+1,x,c);
+    <span class="reserved">if</span> mask(y+1,x)
+        A(e, pixelIndices(y+1,x)) = -1;
+    <span class="reserved">else</span>
+        b(e) = b(e) + target(y+1,x,c);
+    <span class="reserved">end</span>
+<span class="reserved">end</span></code>
+    </div>
+    <br>
+    If a given pixel is within the blending region (denoted by <code>mask</code>), then the blending
+    constraints are applied to that pixel; otherwise, it is ignored. These constraints look at each
+    4-neighbor in turn (first left, then right, top, and bottom) and apply the corresponding portion
+    of the Poisson blending constraint equation: if the neighbor is outside of the blended region
+    (and thus this pixel is on the border with the target image), the gradient must strive to match
+    the intensity of the target image as well as the inserted image; otherwise, only the gradient of
+    the inserted image needs to be preserved.
+    <br><br>
+    Once this is solved (using the same code as before), all that remains is to copy in the rest of
+    the image around the blended region&mdash;because only the blended region is constrained, the
+    only pixels with any values in the resulting image are those within the masked region. This is
+    simply accomlished with a single line:
+    <br><br>
+    <div class="codeWrapper">
+<code>blended_img(~repmat(mask,[1,1,channels])) = target(~repmat(mask,[1,1,channels]));</code>
+    </div>
+    <br>
+
+    <!-- EXAMPLES -->
+    <h4>Supernatural St. Louis</h4>
+    As a first test of Poisson blending, we can insert a variety of supernatural objects onto the
+    St. Louis skyline. First, we can insert Godzilla emerging from the Mississippi River:
+    <br>
+
+    <figure>
+      <a href="images/src_images/stl_skyline.jpeg">
+        <img src="images/src_images/stl_skyline.jpeg" alt="The St. Louis skyline" />
+      </a>
+      <figcaption>The unmodified skyline image</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/src_images/godzilla.gif">
+        <img src="images/src_images/godzilla.gif" alt="Godzilla emerging from the water" />
+      </a>
+      <figcaption>Godzilla emerging from the water</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/blending/godzilla_aligned.jpeg">
+        <img src="images/blending/godzilla_aligned.jpeg" alt="Godzilla aligned with the skyline" />
+      </a>
+      <figcaption>Godzilla aligned onto the St. Louis riverfront</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/blending/godzilla_blended.jpeg">
+        <img src="images/blending/godzilla_blended.jpeg" alt="Godzilla blended into St. Louis" />
+      </a>
+      <figcaption>The blended image of Godzilla in St. Louis</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    Because the source image is grayscale, we can clearly see the way that Poisson blending affects
+    the color accuracy of the inserted image: Godzilla's lower half has become greener (matching the
+    trees at his waist) while his head is blue to match the sky. Although Poisson blending will
+    preserve the shape and gradient of an image, its intensity will <i>not</i> be preserved; there
+    are no guarantees of color accuracy in the blended image.
+    <br><br>
+    Continuing from this example, we can then insert a flying saucer into the sky (using the blended
+    image from above as the new target image):
+    <br>
+
+    <figure>
+      <a href="images/blending/godzilla_blended.jpeg">
+        <img src="images/blending/godzilla_blended.jpeg" alt="The St. Louis skyline" />
+      </a>
+      <figcaption>The skyline with Godzilla (as computed above)</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/src_images/ufo.jpeg">
+        <img src="images/src_images/ufo.jpeg" alt="A flying saucer sighting!" />
+      </a>
+      <figcaption>The mysterious UFO</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/blending/ufo_aligned.jpeg">
+        <img src="images/blending/ufo_aligned.jpeg" alt="UFO aligned with the skyline" />
+      </a>
+      <figcaption>UFO aligned into the sky</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/blending/ufo_blended.jpeg">
+        <img src="images/blending/ufo_blended.jpeg" alt="UFO blended into St. Louis" />
+      </a>
+      <figcaption>The blended image of a flying saucer over St. Louis</figcaption>
+    </figure>
+
+    <h4>Face Replacement</h4>
+
+    One of the other powerful uses of Poisson blending is in overwriting part of one image with
+    elements from another in a way that is seamlessly believable (or at the very least appears to
+    be areasonable image, even if it is in truth patently impossible). As an example of this, we can
+    insert the face of the actor Rowan Atkinson onto the body of a baby:
+    <br>
+
+    <figure>
+      <a href="images/src_images/baby.png">
+        <img src="images/src_images/baby.png" alt="Image of a baby" />
+      </a>
+      <figcaption>
+        The baby whose face will be replaced (the image will be flipped to make alignment cleaner)
+      </figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/src_images/rowan.jpeg">
+        <img src="images/src_images/rowan.jpeg" alt="Rowan Atkinson" />
+      </a>
+      <figcaption>A portrait image of Rowan Atkinson</figcaption>
+    </figure>
+
+    <hr class="invisible" />
+
+    <figure>
+      <a href="images/blending/rowan_aligned.jpeg">
+        <img src="images/blending/rowan_aligned.jpeg" alt="Atkinson's face aligned with the baby's body" />
+      </a>
+      <figcaption>The two faces aligned with one another</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/blending/rowan_blended.jpeg">
+        <img src="images/blending/rowan_blended.jpeg" alt="Atkinson's face blended with the baby's body" />
+      </a>
+      <figcaption>The finished, blended composite</figcaption>
+    </figure>
+
+    Despite the clearly fake and impossible nature of the resulting composite, the seamless nature
+    of the blending and the "close enough" appearance of a face where we would normally expect to
+    find one results in an image which still appears to be reasonable&mdash;the image ends up
+    evoking the Freudian concept of the uncanny, being simultaneously close to reality and
+    impossibly removed from it. This highlights the power of Poisson blending for creating
+    impossible imagery which still manages to masquerade as photorealistic.
+
+    <h4>Blending on a Brick Wall</h4>
+    Despite the largely positive results of the examples given above, there are many tasks for whcih
+    Poisson blending is not well suited. For example, in cases where the target image has a clear,
+    strong pattern (such as in images of a brick wall), Poisson blending will create an obvious area
+    around the inserted image where the mask had been:
+    <br>
+
+    <figure>
+      <a href="images/src_images/brickWall.jpeg">
+        <img src="images/src_images/brickWall.jpeg" alt="A brick wall" />
+      </a>
+      <figcaption>An image of a brick wall</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/src_images/godzilla.gif">
+        <img src="images/src_images/godzilla.gif" alt="Godzilla" />
+      </a>
+      <figcaption>The same image of Godzilla from above</figcaption>
+    </figure>
+
+    <hr class="invisible" />
+
+    <figure>
+      <a href="images/blending/brick_poisson_aligned.jpeg">
+        <img src="images/blending/brick_poisson_aligned.jpeg" alt="Godzilla aligned against the brick wall" />
+      </a>
+      <figcaption>The aligned image</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/blending/brick_poisson_blended.jpeg">
+        <img src="images/blending/brick_poisson_blended.jpeg" alt="Possion blending of Godzilla against brick" />
+      </a>
+      <figcaption>The blended image</figcaption>
+    </figure>
+
+    Note the clear, blurry region surrounding Godzilla. The texture of the brick has been obviously
+    interrupted, destroying the illusion that these two images are actually a single photograph
+    rather than a fictitious blend produced from two sources.
   </p>
 
   <hr>
@@ -142,7 +420,61 @@ b(e) = image(1,1);</code>
   <!-- MIXED-GRADIENT BLENDING -->
   <h3>Blending with Mixed Gradients</h3>
   <p>
-    
+    Although Poisson blending is able to achieve reasonable results when the backgrounds of the
+    source and target images are similar, it can result in jarring transitions between the blended
+    and unblended regions of the image (as can be seen in one of the examples above). To mitigate
+    this problem, we can instead use a mixed-gradient approach: rather than defaulting to the
+    gradient of the inserted image when inside the blended region, we can use whichever of the two
+    images has a more expressive gradient&mdash;one with a greater magnitude&mdash;at the point in
+    question. In practice, this amounts to a simple change to the code for computing each
+    constraint, so in the interest of brevity, only a single copy of the constraint is shown:
+    <br><br>
+    <div class="codeWrapper">
+<code>e = e + 1;
+A(e, pixelIndices(y,x)) = 1;
+objGrad = object(y,x,c) - object(y,x-1,c);
+trgGrad = target(y,x,c) - target(y,x-1,c);
+<span class="reserved">if</span> abs(objGrad) > abs(trgGrad)
+    b(e) = objGrad;
+<span class="reserved">else</span>
+    b(e) = trgGrad;
+<span class="reserved">end</span>
+<span class="reserved">if</span> ~mask(y,x-1)
+    b(e) = b(e) + target(y,x-1,c);   
+<span class="reserved">else</span>
+    A(e, pixelIndices(y,x-1)) = -1;
+<span class="reserved">end</span></code>
+    </div>
+    <br>
+    Because the gradient of the target image is at least partially preserved in the blended version,
+    some of the texture of that image will show through as well. This means that the transition form
+    the blended region to the rest of the image will not be so starkly obvious; it's less likely
+    that the shape of the blending region will be plainly visible in the same way that it could be
+    with Poisson blending. The difference can be seen directly in the following example:
+    <br><br>
+    Now we can return to the image of Godzilla against a brick wall shown above, but can use a
+    mixed-gradient approach to improve the quality of the results:
+    <br>
+
+    <figure>
+      <a href="images/blending/brick_mixed_aligned.jpeg">
+        <img src="images/blending/brick_mixed_aligned.jpeg" alt="Godzilla aligned against the brick wall" />
+      </a>
+      <figcaption>The aligned image</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/blending/brick_mixed_blended.jpeg">
+        <img src="images/blending/brick_mixed_blended.jpeg" alt="Mixed-gradient blending of Godzilla against brick" />
+      </a>
+      <figcaption>The blended image</figcaption>
+    </figure>
+
+    In this example, the brick texture continues uniterrupted into the blended portion of the image.
+    However, this also means that the brick shows through Godzilla itself; the blend no longer looks
+    like another object was present in the original image, but rather like there was an <i>image</i>
+    of the object in the original context: rather than the creature itself, this appears to be a
+    graffiti rendition of Godzilla.
   </p>
 
   <hr>
@@ -150,15 +482,16 @@ b(e) = image(1,1);</code>
   <!-- CHALLENGES FACED -->
   <h3>Design Challenges</h3>
   <p>
-
-  </p>
-
-  <hr>
-
-  <!-- IMPLEMENTATION ADVANTAGES -->
-  <h3>Design Advantages</h3>
-  <p>
-
+    The main challenge which I faced (and, in fact, the main shortcoming of the resulting
+    implementation) was the reliance on loops in my code: MATLAB is designed to be amazingly
+    efficient when working with vectorized code&mdash;meaning that it's able to accomplish most of
+    its work in parallel&mdsash;but struggles to run quickly when faced with iteration. As such, my
+    implementation is almost unusably slow when faced with large images. Although there are some
+    obvious paths towards optimization (including the aforementioned vectorization, constraining
+    the blending code to ignore regions outside of the mask in a single step rather than discarding
+    each one in turn, or computing all of the channels simultaneously rather than in sequence), I
+    was unable to easily find clean solutions for these problems in the time alloted for completing
+    the assignment.
   </p>
 
   <hr>
@@ -166,8 +499,51 @@ b(e) = image(1,1);</code>
   <!-- EXTRA CREDIT -->
   <h3>Extra Credit</h3>
   <p>
-    
+    <h4>Grayscale Conversion</h4>
+    The simplest approach to grayscale conversion&mdash;and the one which will most directly
+    emulate the color version of the image&mdash;involves simply setting the value in all channels
+    to be the average (or min or max) of those channels at that point. Although this results in some
+    very reasonable images, it fundamentally loses information: any differentiation between colors
+    will be lost, meaning that a purely red pixel and a purely green pixel will appear identically
+    in the converted image.
+    <br><br>
+
+    <figure>
+      <a href="images/src_images/colorBlindTest35.png">
+        <img src="images/src_images/colorBlindTest35.png" alt="The original, color image" />
+      </a>
+      <figcaption>The color image</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/grayscale/rgb_to_gray.jpeg">
+        <img src="images/grayscale/rgb_to_gray.jpeg" alt="The simple grayscale image" />
+      </a>
+      <figcaption>The simple grayscale-converted image</figcaption>
+    </figure>
+
+    To preserve this information, we can consider the convesion process to
+    be a case of mixed-gradient blending: after converting to the HSV color space, we can blend the
+    images such that significant shifts in either saturation or intensity will be reflected in the
+    result. This will produce an image that no longer appears to be similar to the source image, but
+    this important information will be preserved.
+    <br><br>
+    <b>TODO explain the methodology</b>
+    <br><br>
+
+    <figure>
+      <a href="images/src_images/colorBlindTest35.png">
+        <img src="images/src_images/colorBlindTest35.png" alt="The original, color image" />
+      </a>
+      <figcaption>The color image</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/grayscale/color_to_gray.jpeg">
+        <img src="images/grayscale/color_to_gray.jpeg" alt="The improved grayscale image" />
+      </a>
+      <figcaption>Gradient-preserving grayscale converted image</figcaption>
+    </figure>
   </p>
 
-  
 </body>
