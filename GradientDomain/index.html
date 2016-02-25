@@ -192,41 +192,41 @@ b(e) = image(1,1,c);</code>
     <br><br>
     <div class="codeWrapper">
 <code><span class="reserved">if</span> mask(y,x)
-    e = e + 1;
-    A(e, pixelIndices(y,x)) = 1;
-    b(e) = object(y,x,c) - object(y,x-1,c);
-    <span class="reserved">if</span> mask(y,x-1)
-        A(e, pixelIndices(y,x-1)) = -1;
-    <span class="reserved">else</span>
-        b(e) = b(e) + target(y,x-1,c);
-    <span class="reserved">end</span>
-    
-    e = e + 1;
-    A(e, pixelIndices(y,x)) = 1;
-    b(e) = object(y,x,c) - object(y,x+1,c);
-    <span class="reserved">if</span> mask(y,x+1)
-        A(e, pixelIndices(y,x+1)) = -1;
-    <span class="reserved">else</span>
-        b(e) = b(e) + target(y,x+1,c);
-    <span class="reserved">end</span>
-    
-    e = e + 1;
-    A(e, pixelIndices(y,x)) = 1;
-    b(e) = object(y,x,c) - object(y-1,x,c);
-    <span class="reserved">if</span> mask(y-1,x)
-        A(e, pixelIndices(y-1,x)) = -1;
-    <span class="reserved">else</span>
-        b(e) = b(e) + target(y-1,x,c);
-    <span class="reserved">end</span>
-    
-    e = e + 1;
-    A(e, pixelIndices(y,x)) = 1;
-    b(e) = object(y,x,c) - object(y+1,x,c);
-    <span class="reserved">if</span> mask(y+1,x)
-        A(e, pixelIndices(y+1,x)) = -1;
-    <span class="reserved">else</span>
-        b(e) = b(e) + target(y+1,x,c);
-    <span class="reserved">end</span>
+  e = e + 1;
+  A(e, pixelIndices(y,x)) = 1;
+  b(e) = object(y,x,c) - object(y,x-1,c);
+  <span class="reserved">if</span> mask(y,x-1)
+    A(e, pixelIndices(y,x-1)) = -1;
+  <span class="reserved">else</span>
+      b(e) = b(e) + target(y,x-1,c);
+  <span class="reserved">end</span>
+  
+  e = e + 1;
+  A(e, pixelIndices(y,x)) = 1;
+  b(e) = object(y,x,c) - object(y,x+1,c);
+  <span class="reserved">if</span> mask(y,x+1)
+    A(e, pixelIndices(y,x+1)) = -1;
+  <span class="reserved">else</span>
+    b(e) = b(e) + target(y,x+1,c);
+  <span class="reserved">end</span>
+  
+  e = e + 1;
+  A(e, pixelIndices(y,x)) = 1;
+  b(e) = object(y,x,c) - object(y-1,x,c);
+  <span class="reserved">if</span> mask(y-1,x)
+    A(e, pixelIndices(y-1,x)) = -1;
+  <span class="reserved">else</span>
+    b(e) = b(e) + target(y-1,x,c);
+  <span class="reserved">end</span>
+  
+  e = e + 1;
+  A(e, pixelIndices(y,x)) = 1;
+  b(e) = object(y,x,c) - object(y+1,x,c);
+  <span class="reserved">if</span> mask(y+1,x)
+    A(e, pixelIndices(y+1,x)) = -1;
+  <span class="reserved">else</span>
+    b(e) = b(e) + target(y+1,x,c);
+  <span class="reserved">end</span>
 <span class="reserved">end</span></code>
     </div>
     <br>
@@ -241,7 +241,7 @@ b(e) = image(1,1,c);</code>
     Once this is solved (using the same code as before), all that remains is to copy in the rest of
     the image around the blended region&mdash;because only the blended region is constrained, the
     only pixels with any values in the resulting image are those within the masked region. This is
-    simply accomlished with a single line:
+    simply accomplished with a single line:
     <br><br>
     <div class="codeWrapper">
 <code>blended_img(~repmat(mask,[1,1,channels])) = target(~repmat(mask,[1,1,channels]));</code>
@@ -330,8 +330,8 @@ b(e) = image(1,1,c);</code>
 
     One of the other powerful uses of Poisson blending is in overwriting part of one image with
     elements from another in a way that is seamlessly believable (or at the very least appears to
-    be areasonable image, even if it is in truth patently impossible). As an example of this, we can
-    insert the face of the actor Rowan Atkinson onto the body of a baby:
+    be a reasonable image, even if it is in truth patently impossible). As an example of this, we
+    can insert the face of the actor Rowan Atkinson onto the body of a baby:
     <br>
 
     <figure>
@@ -374,7 +374,7 @@ b(e) = image(1,1,c);</code>
     impossible imagery which still manages to masquerade as photorealistic.
 
     <h4>Blending on a Brick Wall</h4>
-    Despite the largely positive results of the examples given above, there are many tasks for whcih
+    Despite the largely positive results of the examples given above, there are many tasks for which
     Poisson blending is not well suited. For example, in cases where the target image has a clear,
     strong pattern (such as in images of a brick wall), Poisson blending will create an obvious area
     around the inserted image where the mask had been:
@@ -435,14 +435,14 @@ A(e, pixelIndices(y,x)) = 1;
 objGrad = object(y,x,c) - object(y,x-1,c);
 trgGrad = target(y,x,c) - target(y,x-1,c);
 <span class="reserved">if</span> abs(objGrad) > abs(trgGrad)
-    b(e) = objGrad;
+  b(e) = objGrad;
 <span class="reserved">else</span>
-    b(e) = trgGrad;
+  b(e) = trgGrad;
 <span class="reserved">end</span>
 <span class="reserved">if</span> ~mask(y,x-1)
-    b(e) = b(e) + target(y,x-1,c);   
+  b(e) = b(e) + target(y,x-1,c);   
 <span class="reserved">else</span>
-    A(e, pixelIndices(y,x-1)) = -1;
+  A(e, pixelIndices(y,x-1)) = -1;
 <span class="reserved">end</span></code>
     </div>
     <br>
@@ -470,7 +470,7 @@ trgGrad = target(y,x,c) - target(y,x-1,c);
       <figcaption>The blended image</figcaption>
     </figure>
 
-    In this example, the brick texture continues uniterrupted into the blended portion of the image.
+    In this example, the brick texture continues uninterrupted into the blended portion of the image.
     However, this also means that the brick shows through Godzilla itself; the blend no longer looks
     like another object was present in the original image, but rather like there was an <i>image</i>
     of the object in the original context: rather than the creature itself, this appears to be a
@@ -522,15 +522,41 @@ trgGrad = target(y,x,c) - target(y,x-1,c);
       <figcaption>The simple grayscale-converted image</figcaption>
     </figure>
 
-    To preserve this information, we can consider the convesion process to
+    To preserve this information, we can consider the conversion process to
     be a case of mixed-gradient blending: after converting to the HSV color space, we can blend the
     images such that significant shifts in either saturation or intensity will be reflected in the
     result. This will produce an image that no longer appears to be similar to the source image, but
     this important information will be preserved.
     <br><br>
-    <b>TODO explain the methodology</b>
+    After converting the source image to the HSV color space by calling the <code>rgb2hsv</code>
+    function, we once again build a matrix of constraints using a similar methodology to the cases
+    described above. As in the mixed-gradient case, only a single case will be explicitly shown for
+    the sake of space:
     <br><br>
-
+    <div class="codeWrapper">
+<code><span class="reserved">if</span> x-1 > 0
+  e = e + 1;
+  satGrad = image(y,x,2) - image(y,x-1,2);
+  valGrad = image(y,x,3) - image(y,x-1,3);
+  b(e) = (abs(satGrad) > abs(valGrad))*satGrad + ...
+      (abs(satGrad) <= abs(valGrad))*valGrad;
+  A(e, pixelIndices(y,x)) = 1;
+  A(e, pixelIndices(y,x-1)) = -1;
+<span class="reserved">end</span></code>
+    </div>
+    <br>
+    Once all of these constraints are in place, the image can be solved for and reshaped using the
+    same methodology as above. However, the image may have lost its original scale and will need to
+    be normalized; all of this is accomplished with the following code:
+    <br><br>
+    <div class="codeWrapper">
+<code>grayscale = full(reshape(A \ b, [height, width]));
+grayscale = grayscale - min(min(grayscale));
+grayscale = grayscale / max(max(grayscale));</code>
+    </div>
+    <br><br>
+    Altogether, this process produces images such as the following:
+    <br>
     <figure>
       <a href="images/src_images/colorBlindTest35.png">
         <img src="images/src_images/colorBlindTest35.png" alt="The original, color image" />
