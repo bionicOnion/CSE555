@@ -30,8 +30,11 @@ function blended_img = mixedBlend(object, mask, target)
                     A(e, pixelIndices(y,x)) = 1;
                     objGrad = object(y,x,c) - object(y,x-1,c);
                     trgGrad = target(y,x,c) - target(y,x-1,c);
-                    b(e) = (abs(objGrad) > abs(trgGrad))*objGrad + ...
-                        (abs(objGrad) <= abs(trgGrad))*trgGrad;
+                    if abs(objGrad) > abs(trgGrad)
+                        b(e) = objGrad;
+                    else
+                        b(e) = trgGrad;
+                    end
                     if ~mask(y,x-1)
                         b(e) = b(e) + target(y,x-1,c);   
                     else
@@ -43,8 +46,11 @@ function blended_img = mixedBlend(object, mask, target)
                     A(e, pixelIndices(y,x)) = 1;
                     objGrad = object(y,x,c) - object(y,x+1,c);
                     trgGrad = target(y,x,c) - target(y,x+1,c);
-                    b(e) = (abs(objGrad) > abs(trgGrad))*objGrad + ...
-                        (abs(objGrad) <= abs(trgGrad))*trgGrad;
+                    if abs(objGrad) > abs(trgGrad)
+                        b(e) = objGrad;
+                    else
+                        b(e) = trgGrad;
+                    end
                     if ~mask(y,x+1)
                         b(e) = b(e) + target(y,x+1,c);
                     else
@@ -56,8 +62,11 @@ function blended_img = mixedBlend(object, mask, target)
                     A(e, pixelIndices(y,x)) = 1;
                     objGrad = object(y,x,c) - object(y-1,x,c);
                     trgGrad = target(y,x,c) - target(y-1,x,c);
-                    b(e) = (abs(objGrad) > abs(trgGrad))*objGrad + ...
-                        (abs(objGrad) <= abs(trgGrad))*trgGrad;
+                    if abs(objGrad) > abs(trgGrad)
+                        b(e) = objGrad;
+                    else
+                        b(e) = trgGrad;
+                    end
                     if ~mask(y-1,x)
                         b(e) = b(e) + target(y-1,x,c);   
                     else
@@ -69,8 +78,11 @@ function blended_img = mixedBlend(object, mask, target)
                     A(e, pixelIndices(y,x)) = 1;
                     objGrad = object(y,x,c) - object(y+1,x,c);
                     trgGrad = target(y,x,c) - target(y+1,x,c);
-                    b(e) = (abs(objGrad) > abs(trgGrad))*objGrad + ...
-                        (abs(objGrad) <= abs(trgGrad))*trgGrad;
+                    if abs(objGrad) > abs(trgGrad)
+                        b(e) = objGrad;
+                    else
+                        b(e) = trgGrad;
+                    end
                     if ~mask(y+1,x)
                         b(e) = b(e) + target(y+1,x,c);   
                     else
