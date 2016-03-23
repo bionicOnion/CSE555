@@ -499,7 +499,82 @@ cutMask(size(errSurface,1), cutLocation:size(errSurface,2)) = 1;
   <!-- TEXTURE TRANSFER -->
   <h3>Texture Transfer</h3>
   <p>
-    <b>TODO</b>
+    The main difference between texture synthesis and texture transfer is in how the error for a
+    given block is selected: for texture transfer, the selected block must also match some target
+    image which is being retextured. This is accomplished quite simply with the following code:
+    <br>
+    <br>
+    <div class="codeWrapper">
+<code>testErrSurface = (testPatch - targetPatch).^2;
+overlapErr = sum(testErrSurface(:));
+
+correspondErrSurface = ...
+    (imgaussfilt(testPatch, 2) - imgaussfilt(contentPatch, 2)).^2;
+correspondErr = sum(correspondErrSurface(:));
+
+testErr = correspondence*overlapErr + (1 - correspondence)*correspondErr;</code>
+    </div>
+    <br>
+    By varying the value of <code>correspondence</code> parameter, relative weight cn be given to
+    either producing a relatively seamless image (in which the texture flows naturally) and an
+    image which contains a strong version of the target image&mdash;two goals which may be at odds
+    with one another, meaning that setting the correct value can be an art in itself (see the Extra
+    Credit section below for a demonstration of the effect of the correspondence variable).
+    <br><br>
+    Each of the following examples was retextured using the textures shown above and a
+    correspondence of 0.5 (even weighting to both elements of the error calculation). The original
+    image appears on the left; the synthetic image is on the right.
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/pless.jpeg">
+        <img src="images/pless.jpeg" alt="Portrait of Professor Pless" />
+      </a>
+      <figcaption>Portrait of Professor Pless</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/paperPless.jpeg">
+        <img src="images/paperPless.jpeg" alt="Paper Pless" />
+      </a>
+      <figcaption>Professor Pless retextured as paper</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/arch.jpeg">
+        <img src="images/arch.jpeg" alt="The Gateway Arch" />
+      </a>
+      <figcaption>The Gateway Arch</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/riceArch.jpeg">
+        <img src="images/riceArch.jpeg" alt="The Riceway Arch" />
+      </a>
+      <figcaption>The Riceway Arch</figcaption>
+    </figure>
+    
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/brookings.jpeg">
+        <img src="images/brookings.jpeg" alt="Brookings Hall" />
+      </a>
+      <figcaption>Brookings Hall</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/wovenBrookings.jpeg">
+        <img src="images/wovenBrookings.jpeg" alt="Brookings Weave" />
+      </a>
+      <figcaption>Brookings Weave</figcaption>
+    </figure>
+    
+    <hr class="invisible">
+
   </p>
 
   <hr>
