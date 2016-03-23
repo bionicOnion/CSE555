@@ -125,8 +125,8 @@
     Extra Credit section.
     <br><br>
     Several results produced by this implementation are given below (for each of these examples, the
-    synthetic image is twice as wide and tall as the source image, and the parameters used are given
-    in the caption).
+    synthetic image is twice as wide and tall as the source image, the block size is 100x100, and
+    the overlap was 10 pixels in both the <i>x</i> and <i>y</i> directions).
 
     <hr class="invisible">
     
@@ -138,26 +138,10 @@
     </figure>
 
     <figure>
-      <a href="images/waterSynthBlock.jpeg">
-        <img src="images/waterSynthBlock.jpeg" alt="Synthesized Water Texture" />
+      <a href="images/waterBlock.jpeg">
+        <img src="images/waterBlock.jpeg" alt="Synthesized Water Texture" />
       </a>
-      <figcaption>A synthesized image generated from the water texture<br>Block size of 50, overlap of 5</figcaption>
-    </figure>
-
-    <hr class="invisible">
-
-    <figure>
-      <a href="images/leaf.jpeg">
-        <img src="images/leaf.jpeg" alt="Source Leaf Texture" />
-      </a>
-      <figcaption>Source image of a leaf texture</figcaption>
-    </figure>
-
-    <figure>
-      <a href="images/leafSynthBlock.jpeg">
-        <img src="images/leafSynthBlock.jpeg" alt="Synthesized Leaf Texture" />
-      </a>
-      <figcaption>A synthesized image generated from the leaf texture<br>Block size of 100, overlap of 10</figcaption>
+      <figcaption>A synthesized image generated from the water texture</figcaption>
     </figure>
 
     <hr class="invisible">
@@ -170,15 +154,126 @@
     </figure>
 
     <figure>
-      <a href="images/farmSynthBlock.jpeg">
-        <img src="images/farmSynthBlock.jpeg" alt="Synthesized Farm Texture" />
+      <a href="images/farmBlock.jpeg">
+        <img src="images/farmBlock.jpeg" alt="Synthesized Farm Texture" />
       </a>
-      <figcaption>A synthesized image generated from the farm texture<br>Block size of 100, overlap of 10</figcaption>
+      <figcaption>A synthesized image generated from the farm texture</figcaption>
     </figure>
     
     <hr class="invisible">
 
-    <b>TODO&mdash;more examples &amp; discussion of results</b>
+    <figure>
+      <a href="images/leaf.jpeg">
+        <img src="images/leaf.jpeg" alt="Source Leaf Texture" />
+      </a>
+      <figcaption>Source image of a leaf texture</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/leafBlock.jpeg">
+        <img src="images/leafBlock.jpeg" alt="Synthesized Leaf Texture" />
+      </a>
+      <figcaption>A synthesized image generated from the leaf texture</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/crinkled.jpeg">
+        <img src="images/crinkled.jpeg" alt="Source Paper Texture" />
+      </a>
+      <figcaption>Source image of a crinkled paper texture</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/crinkleMinCut.jpeg">
+        <img src="images/crinkleMinCut.jpeg" alt="Synthesized Paper Texture" />
+      </a>
+      <figcaption>A synthesized image generated from the crinkled paper texture</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/metal.jpeg">
+        <img src="images/metal.jpeg" alt="Source Metal Texture" />
+      </a>
+      <figcaption>Source image of a metal texture</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/metalMinCut.jpeg">
+        <img src="images/metalMinCut.jpeg" alt="Synthesized Metal Texture" />
+      </a>
+      <figcaption>A synthesized image generated from the metal texture</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/nebula.jpeg">
+        <img src="images/nebula.jpeg" alt="Source Nebula Texture" />
+      </a>
+      <figcaption>Source image of a nebula texture</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/nebulaMinCut.jpeg">
+        <img src="images/nebulaMinCut.jpeg" alt="Synthesized Nebula Texture" />
+      </a>
+      <figcaption>A synthesized image generated from the nebula texture</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/rice.jpeg">
+        <img src="images/rice.jpeg" alt="Source Rice Texture" />
+      </a>
+      <figcaption>Source image of a rice texture</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/riceMinCut.jpeg">
+        <img src="images/riceMinCut.jpeg" alt="Synthesized Rice Texture" />
+      </a>
+      <figcaption>A synthesized image generated from the rice texture</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/woven.jpeg">
+        <img src="images/woven.jpeg" alt="Source Woven Texture" />
+      </a>
+      <figcaption>Source image of a woven texture</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/wovenMinCut.jpeg">
+        <img src="images/wovenMinCut.jpeg" alt="Synthesized Woven Texture" />
+      </a>
+      <figcaption>A synthesized image generated from the woven texture</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    Each of these example images are interesting for the various types of textures that they
+    represent: the metal and woven textures are relatively straightforward in the way that they
+    repeat their patterns, the rice and paper textures have more stochastic variance in their
+    apperances, and the nebula texture has even less of a regular, recognizable pattern. This
+    variety of texture types highlights the power of the underlying algorithm: regardless of the
+    amount of 'order' or 'chaos' present in a texture, the block-based algorithm is able to capture
+    its essence easily (although the generated image of the metal texture isn't precisely correct,
+    simply tweaking the block size to include a full repetition of the pattern would likely solve
+    this issue).
+    <br><br>
+    However, this also hints at some of the limitations of the algorithm: the synthetic metal, leaf,
+    and nebula images have all lost the higher-order elements of the relevant textures (e.g. the
+    large central vein running through the leaf). This is a clear illustration of one of the
+    tradeoffs inherent in selecting block size: more of the original image will be copied verbatim
+    (thus increasing the likelihood of duplication or poor fitting blocks), but the low-frequency
+    elements of the texture are more likely to be captured.
 
     <h4>Synthesis with Minimum-Error Boundary Cuts</h4>
     The only difference between this implementation and the one above is in the way that blocks are
@@ -187,10 +282,78 @@
     <br>
     <br>
     <div class="codeWrapper">
-<code>TODO</code>
+<code>width = overlap(1);
+<span class="reserved">if</span> size(targetPatch,1) < overlap(1)
+  width = size(targetPatch,1);
+<span class="reserved">end</span>
+height = overlap(2);
+<span class="reserved">if</span> size(targetPatch,2) < overlap(2)
+  height = size(targetPatch,2);
+<span class="reserved">end</span>
+vertMask = horzcat(minErrCut(rgb2gray(bestErrSurface(1:width,:,:))'), ...
+  ones(size(targetPatch,2), size(targetPatch,1)-width))';
+horizMask = vertcat(minErrCut(rgb2gray(bestErrSurface(:,1:height,:)))', ...
+  ones(size(targetPatch,2)-height, size(targetPatch,1)))';
+combinedMask = repmat(vertMask &amp; horizMask, [1, 1, 3]);
+
+texPatch = srcTexture(bestPatch(2):bestPatch(2) + size(targetPatch,1) - 1, ...
+    bestPatch(1):bestPatch(1) + size(targetPatch,2) - 1, :);
+  
+newPatch = combinedMask.*texPatch + (1 - combinedMask).*synthesized(j:j + ...
+  size(targetPatch,1) - 1, i:i + size(targetPatch,2) - 1, :);
+
+synthesized(j:j + size(targetPatch,1) - 1, i:i + size(targetPatch,2) - 1, :) = newPatch;</code>
     </div>
     <br>
-    <b>TODO&mdash;explain the min-err cut</b>
+    Instead of simply copying the entire block from the texture image into the synthesized
+    composite, this code generates a mask using the <code>minErrCut</code> function given in the
+    listing below. This mask is then used to sample from both the blocks already inserted into
+    the synthetic image and from the new block being inserted, resulting in a more seamless
+    transition between blocks.
+    <br>
+    <br>
+    <div class="codeWrapper">
+<code>E = zeros(size(errSurface));
+E(1,:) = errSurface(1,:);
+<span class="reserved">for</span> i = 2:size(errSurface,1)
+  <span class="reserved">for</span> j = 1:size(errSurface,2)
+    minimum = E(i-1,j);
+    <span class="reserved">if</span> j > 1 &amp;&amp; E(i-1,j-1) < minimum
+      minimum = E(i-1,j-1);
+    <span class="reserved">end</span>
+    <span class="reserved">if</span> j < size(errSurface,2) &amp;&amp; E(i-1, j+1) < minimum
+      minimum = E(i-1, j+1);
+    <span class="reserved">end</span>
+    E(i,j) = errSurface(i,j) + minimum;
+  <span class="reserved">end</span>
+<span class="reserved">end</span>
+
+cutMask = zeros(size(errSurface));
+[~, cutLocation] = min(E(size(errSurface,1),:));
+cutMask(size(errSurface,1), cutLocation:size(errSurface,2)) = 1;
+<span class="reserved">for</span> i = size(errSurface,1)-1:-1:1
+  bestCutLoc = cutLocation;
+  bestCutErr = E(i, bestCutLoc);
+  <span class="reserved">if</span> cutLocation > 1 &amp;&amp; E(i, cutLocation - 1) < bestCutErr
+    bestCutLoc = cutLocation - 1;
+    bestCutErr = E(i, bestCutLoc);       
+  <span class="reserved">end</span>
+  <span class="reserved">if</span> cutLocation < size(errSurface,2) &amp;&amp; E(i, cutLocation + 1) < bestCutErr
+    bestCutLoc = cutLocation + 1;   
+  <span class="reserved">end</span>
+  
+  cutLocation = bestCutLoc;
+  cutMask(i, cutLocation:size(errSurface,2)) = 1;
+<span class="reserved">end</span></code>
+    </div>
+    <br>
+    This code is an implementation of the algorithm discussed in Section 2.1 of the paper <a
+    href="http://graphics.cs.cmu.edu/people/efros/research/quilting/quilting.pdf">Image Quilting
+    for Texture Synthesis and Transfer</a> by Efros et. al. Broadly speaking, this algorithm
+    calculates the minimum possible error of any path from the top to bottom (or left to right) of
+    the overlapping region and then works backwards in the opposite direction to find the optimal
+    path&mdash;the point in the last row/column with minimal error marks the end of the cut; finding
+    the rest simply means tracing backwards from that point.
     <br><br>
     When this implementation is used, the results are as follows (the images on the left were
     results obtained using the implementation given above; those on the right use the improved
@@ -199,54 +362,136 @@
     <hr class="invisible">
 
     <figure>
-      <a href="images/waterSynthBlock.jpeg">
-        <img src="images/waterSynthBlock.jpeg" alt="Synthesized Water Texture&mdash;Block Based" />
+      <a href="images/waterBlock.jpeg">
+        <img src="images/waterBlock.jpeg" alt="Synthesized Water Texture&mdash;Block Based" />
       </a>
-      <figcaption>Block-based synthetic water texture<br>Block size of 50, overlap of 5</figcaption>
+      <figcaption>Block-based synthetic water texture</figcaption>
     </figure>
 
     <figure>
-      <a href="images/waterSynthMinErr.jpeg">
-        <img src="images/waterSynthMinErr.jpeg" alt="Synthesized Water Texture&mdash;Minimum-Error Cut" />
+      <a href="images/waterMinCut.jpeg">
+        <img src="images/waterMinCut.jpeg" alt="Synthesized Water Texture&mdash;Minimum-Error Cut" />
       </a>
-      <figcaption>Minimum-error synthetic water texture<br>Block size of 50, overlap of 5</figcaption>
+      <figcaption>Minimum-error synthetic water texture</figcaption>
     </figure>
 
     <hr class="invisible">
 
     <figure>
-      <a href="images/leafSynthBlock.jpeg">
-        <img src="images/leafSynthBlock.jpeg" alt="Synthesized Leaf Texture&mdash;Block Based" />
+      <a href="images/farmBlock.jpeg">
+        <img src="images/farmBlock.jpeg" alt="Synthesized Farm Texture&mdash;Block Based" />
       </a>
-      <figcaption>Block-based synthetic leaf texture<br>Block size of 100, overlap of 10</figcaption>
+      <figcaption>Block-based synthetic farm texture</figcaption>
     </figure>
 
-        <figure>
-      <a href="images/leafSynthMinErr.jpeg">
-        <img src="images/leafSynthMinErr.jpeg" alt="Synthesized Leaf Texture&mdash;Minimum-Error Cut" />
+    <figure>
+      <a href="images/farmMinCut.jpeg">
+        <img src="images/farmMinCut.jpeg" alt="Synthesized Leaf Texture&mdash;Minimum-Error Cut" />
       </a>
-      <figcaption>Minimum-error synthetic leaf texture<br>Block size of 100, overlap of 10</figcaption>
+      <figcaption>Minimum-error synthetic farm texture</figcaption>
     </figure>
 
     <hr class="invisible">
 
     <figure>
-      <a href="images/farmSynthBlock.jpeg">
-        <img src="images/farmSynthBlock.jpeg" alt="Synthesized Farm Texture&mdash;Block Based" />
+      <a href="images/leafBlock.jpeg">
+        <img src="images/leafBlock.jpeg" alt="Synthesized Leaf Texture&mdash;Block Based" />
       </a>
-      <figcaption>Block-based synthetic farm texture<br>Block size of 100, overlap of 10</figcaption>
+      <figcaption>Block-based synthetic leaf texture</figcaption>
     </figure>
 
-        <figure>
-      <a href="images/leafSynthMinErr.jpeg">
-        <img src="images/leafSynthMinErr.jpeg" alt="Synthesized Leaf Texture&mdash;Minimum-Error Cut" />
+    <figure>
+      <a href="images/leafMinCut.jpeg">
+        <img src="images/leafMinCut.jpeg" alt="Synthesized Leaf Texture&mdash;Minimum-Error Cut" />
       </a>
-      <figcaption>Minimum-error synthetic farm texture<br>Block size of 100, overlap of 10</figcaption>
+      <figcaption>Minimum-error synthetic leaf texture</figcaption>
     </figure>
 
     <hr class="invisible">
 
-    <b>TODO&mdash;more examples &amp; discussion of results</b>
+    <figure>
+      <a href="images/crinkleBlock.jpeg">
+        <img src="images/crinkleBlock.jpeg" alt="Synthesized Paper Texture&mdash;Block Based" />
+      </a>
+      <figcaption>Block-based synthetic crinkled paper texture</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/crinkleMinCut.jpeg">
+        <img src="images/crinkleMinCut.jpeg" alt="Synthesized Paper Texture&mdash;Minimum-Error Cut" />
+      </a>
+      <figcaption>Minimum-error synthetic crinkled paper texture</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/metalBlock.jpeg">
+        <img src="images/metalBlock.jpeg" alt="Synthesized Metal Texture&mdash;Block Based" />
+      </a>
+      <figcaption>Block-based synthetic metal texture</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/metalMinCut.jpeg">
+        <img src="images/metalMinCut.jpeg" alt="Synthesized Metal Texture&mdash;Minimum-Error Cut" />
+      </a>
+      <figcaption>Minimum-error synthetic metal texture</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/nebulaBlock.jpeg">
+        <img src="images/nebulaBlock.jpeg" alt="Synthesized Nebula Texture&mdash;Block Based" />
+      </a>
+      <figcaption>Block-based synthetic nebula texture</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/nebulaMinCut.jpeg">
+        <img src="images/nebulaMinCut.jpeg" alt="Synthesized Nebula Texture&mdash;Minimum-Error Cut" />
+      </a>
+      <figcaption>Minimum-error synthetic nebula texture</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/riceBlock.jpeg">
+        <img src="images/riceBlock.jpeg" alt="Synthesized Rice Texture&mdash;Block Based" />
+      </a>
+      <figcaption>Block-based synthetic rice texture</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/riceMinCut.jpeg">
+        <img src="images/riceMinCut.jpeg" alt="Synthesized Rice Texture&mdash;Minimum-Error Cut" />
+      </a>
+      <figcaption>Minimum-error synthetic rice texture</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/wovenBlock.jpeg">
+        <img src="images/wovenBlock.jpeg" alt="Synthesized Woven Texture&mdash;Block Based" />
+      </a>
+      <figcaption>Block-based synthetic woven texture</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/wovenMinCut.jpeg">
+        <img src="images/wovenMinCut.jpeg" alt="Synthesized Woven Texture&mdash;Minimum-Error Cut" />
+      </a>
+      <figcaption>Minimum-error synthetic woven texture</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    The results aren't dramatically different from those reported above; the borders between regions
+    are slightly harder to detect (especially evident in the newer version of the crinkled paper
+    texture), but otherwise, these images are largely equivalent to those presented above.
   </p>
 
   <hr>
