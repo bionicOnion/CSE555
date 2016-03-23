@@ -72,7 +72,61 @@
     neighboring blocks.
 
     <h4>Block-Based Synthesis</h4>
-    <b>TODO</b>
+    The procedure for block-based texture synthesis is almost shockingly straightforward: due to its
+    simplicity and succinctness, the entire function is given in the following listing:
+    <br>
+    <br>
+    <div class="codeWrapper">
+<code><span class="reserved">function</span> synthesized = synthesizeFromTexture(srcTexture, patchDims, overlap, synthDims)
+  synthesized = zeros(synthDims);
+  
+  <span class="reserved">for</span> i = 1:patchDims(2) - overlap(2):synthDims(2)
+    <span class="reserved">for</span> j = 1:patchDims(1) - overlap(1):synthDims(1)
+      xBound = i + patchDims(2) - 1;
+      <span class="reserved">if</span> xBound > synthDims(2)
+        xBound = synthDims(2);
+      <span class="reserved">end</span>
+      yBound = j + patchDims(1) - 1;
+      <span class="reserved">if</span> yBound > synthDims(1)
+        yBound = synthDims(1);
+      <span class="reserved">end</span>
+      
+      targetPatch = synthesized(j:yBound, i:xBound, :);
+      
+      bestErr = Inf;
+      bestPatch = [0, 0];
+      <span class="reserved">for</span> ii = 1:size(targetPatch,2):size(srcTexture, 2) - size(targetPatch,2)
+        <span class="reserved">for</span> jj = 1:size(targetPatch,1):size(srcTexture, 1) - size(targetPatch,1)
+          testPatch = srcTexture(jj:jj + size(targetPatch,1) - 1, ...
+            ii:ii + size(targetPatch,2) - 1, :).*(targetPatch ~= 0);
+          testErrSurface = (testPatch - targetPatch).^2;
+          testErr = sum(testErrSurface(:));
+          
+          <span class="reserved">if</span> testErr < bestErr
+            bestErr = testErr;
+            bestPatch = [ii, jj];
+          <span class="reserved">end</span>
+        <span class="reserved">end</span>
+      <span class="reserved">end</span>
+      
+      synthesized(j:j + size(targetPatch,1) - 1, i:i + size(targetPatch,2) - 1, :) = ...
+        srcTexture(bestPatch(2):bestPatch(2) + size(targetPatch,1) - 1, ...
+          bestPatch(1):bestPatch(1) + size(targetPatch,2) - 1, :);
+    <span class="reserved">end</span>
+  <span class="reserved">end</span>
+<span class="reserved">end</span></code>
+    </div>
+    <br>
+    Iterating over every clock location in the synthesized image, this function computes the required
+    block size, then iterates over the source image to find a matching block with a minimal SSD
+    error in an overlapping region (defined by the <code>overlap</code> variable). The base block
+    size is given as a parameter, as are the desired dimensions of the synthesized image. To see the
+    results of varying the <code>patchDims</code> and <code>overlap</code> variables, refer to the
+    Extra Credit section.
+    <br><br>
+    Several results produced by this implementation are given below (for each of these examples, the
+    synthetic image is twice as wide and tall as the source image, and the parameters used are given
+    in the caption).
 
     <hr class="invisible">
     
@@ -87,7 +141,7 @@
       <a href="images/waterSynthBlock.jpeg">
         <img src="images/waterSynthBlock.jpeg" alt="Synthesized Water Texture" />
       </a>
-      <figcaption>A synthesized image generated from the water texture</figcaption>
+      <figcaption>A synthesized image generated from the water texture<br>Block size of 50, overlap of 5</figcaption>
     </figure>
 
     <hr class="invisible">
@@ -103,7 +157,7 @@
       <a href="images/leafSynthBlock.jpeg">
         <img src="images/leafSynthBlock.jpeg" alt="Synthesized Leaf Texture" />
       </a>
-      <figcaption>A synthesized image generated from the leaf texture</figcaption>
+      <figcaption>A synthesized image generated from the leaf texture<br>Block size of 100, overlap of 10</figcaption>
     </figure>
 
     <hr class="invisible">
@@ -119,11 +173,80 @@
       <a href="images/farmSynthBlock.jpeg">
         <img src="images/farmSynthBlock.jpeg" alt="Synthesized Farm Texture" />
       </a>
-      <figcaption>A synthesized image generated from the farm texture</figcaption>
+      <figcaption>A synthesized image generated from the farm texture<br>Block size of 100, overlap of 10</figcaption>
     </figure>
+    
+    <hr class="invisible">
+
+    <b>TODO&mdash;more examples &amp; discussion of results</b>
 
     <h4>Synthesis with Minimum-Error Boundary Cuts</h4>
-    <b>TODO</b>
+    The only difference between this implementation and the one above is in the way that blocks are
+    composited together in the synthetized image. As such, only this portion of the code is given
+    here:
+    <br>
+    <br>
+    <div class="codeWrapper">
+<code>TODO</code>
+    </div>
+    <br>
+    <b>TODO&mdash;explain the min-err cut</b>
+    <br><br>
+    When this implementation is used, the results are as follows (the images on the left were
+    results obtained using the implementation given above; those on the right use the improved
+    implementation described here):
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/waterSynthBlock.jpeg">
+        <img src="images/waterSynthBlock.jpeg" alt="Synthesized Water Texture&mdash;Block Based" />
+      </a>
+      <figcaption>Block-based synthetic water texture<br>Block size of 50, overlap of 5</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/waterSynthMinErr.jpeg">
+        <img src="images/waterSynthMinErr.jpeg" alt="Synthesized Water Texture&mdash;Minimum-Error Cut" />
+      </a>
+      <figcaption>Minimum-error synthetic water texture<br>Block size of 50, overlap of 5</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/leafSynthBlock.jpeg">
+        <img src="images/leafSynthBlock.jpeg" alt="Synthesized Leaf Texture&mdash;Block Based" />
+      </a>
+      <figcaption>Block-based synthetic leaf texture<br>Block size of 100, overlap of 10</figcaption>
+    </figure>
+
+        <figure>
+      <a href="images/leafSynthMinErr.jpeg">
+        <img src="images/leafSynthMinErr.jpeg" alt="Synthesized Leaf Texture&mdash;Minimum-Error Cut" />
+      </a>
+      <figcaption>Minimum-error synthetic leaf texture<br>Block size of 100, overlap of 10</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/farmSynthBlock.jpeg">
+        <img src="images/farmSynthBlock.jpeg" alt="Synthesized Farm Texture&mdash;Block Based" />
+      </a>
+      <figcaption>Block-based synthetic farm texture<br>Block size of 100, overlap of 10</figcaption>
+    </figure>
+
+        <figure>
+      <a href="images/leafSynthMinErr.jpeg">
+        <img src="images/leafSynthMinErr.jpeg" alt="Synthesized Leaf Texture&mdash;Minimum-Error Cut" />
+      </a>
+      <figcaption>Minimum-error synthetic farm texture<br>Block size of 100, overlap of 10</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <b>TODO&mdash;more examples &amp; discussion of results</b>
   </p>
 
   <hr>
