@@ -46,10 +46,18 @@ function synthesized = synthTexMinCut(srcTexture, patchDims, overlap, synthDims)
             end
             
             % Calculate the appropriate minimum-error cut mask
-            vertMask = horzcat(minErrCut(rgb2gray(bestErrSurface(1:overlap(1),:,:))'), ...
-                ones(size(targetPatch,2), size(targetPatch,1)-overlap(1)))';
-            horizMask = vertcat(minErrCut(rgb2gray(bestErrSurface(:,1:overlap(2),:)))', ...
-                ones(size(targetPatch,2)-overlap(2), size(targetPatch,1)))';
+            width = overlap(1);
+            if size(targetPatch,1) < overlap(1)
+                width = size(targetPatch,1);
+            end
+            height = overlap(2);
+            if size(targetPatch,2) < overlap(2)
+                height = size(targetPatch,2);
+            end
+            vertMask = horzcat(minErrCut(rgb2gray(bestErrSurface(1:width,:,:))'), ...
+                ones(size(targetPatch,2), size(targetPatch,1)-width))';
+            horizMask = vertcat(minErrCut(rgb2gray(bestErrSurface(:,1:height,:)))', ...
+                ones(size(targetPatch,2)-height, size(targetPatch,1)))';
             combinedMask = repmat(vertMask & horizMask, [1, 1, 3]);
             
             texPatch = srcTexture(bestPatch(2):bestPatch(2) + size(targetPatch,1) - 1, ...
