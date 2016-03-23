@@ -1,0 +1,100 @@
+<!DOCTYPE HTML>
+
+<head>
+  <meta charset="UTF-8">
+  <title>CSE 555: Project 3</title>
+  <link rel="stylesheet" href="../cse555.css">
+  <script type="text/javascript" src="http://latex.codecogs.com/latexit.js"></script>
+</head>
+<body>
+  <h1>CSE 555: Project 3</h1>
+  <h2>Texture Synthesis &amp; Transfer</h2>
+
+  <h2>Robert Miller</h2>
+
+  <div class="heading">
+    <a href="http://www.cse.wustl.edu/~pless/classes/555/project3.html">Project Guidelines</a>
+    ||
+    <a href="http://www.cse.wustl.edu/~pless/classes/555/">Course Website</a>
+    <br>
+    <br>
+    <img src="images/blending/ufo_blended.jpeg" alt="CSE 555: Project 3" />
+    <br>
+  </div>
+
+  <hr>
+
+  <!-- PROJECT OVERVIEW -->
+  <h3>Project Overview</h3>
+  <p>
+    In many contexts, it may be desirable to extend an image (to enlarge an image, to fill in an
+    empty space, etc.). Although it would be possible to simply copy existing parts of the
+    image&mdash;or elements from other images&mdash;the repetition of elements of an image may be
+    obviously artificial or aesthetically unsatisfying. Instead, a system to compute extensions to
+    existing patterns within the image may result in more pleasing images.
+    <br><br>
+    The basic gist of this project is to synthesize new images from 'textures' found in source
+    images. Textures are images (or portions of images) which represent a single object of type of
+    object&mdash;for example, a texture may be a brick wall, an image of waves in water or grass,
+    foliage, etc. Within these textures may be both high- and low-frequency patterns (e.g. the
+    rectangular shape of bricks in addition to the coarseness of the surface). Texture synthesis
+    relies on identifying and extending these patterns to create an artificial image with the same
+    appearance and properties as an actual photograph, blending seamlessly with the photographed
+    texture in the original image.
+    <br><br>
+    In addition to extending images with texture synthesis, images can be recreated with a different
+    texture: by matching elements of a target image with regions of a source texture image, a
+    synthetic image can be created with the low-frequency details of one image&mdash;the basic
+    appearance of a face, for instance&mdash;with the texture of another image.
+    <br><br>
+    This project implements both of these elements using a relatively efficient block-based
+    algorithm which finds a small chunk of the texture image which matches with the immediate
+    surroundings and fits it into an arbitrarily sized synthetic image.
+    <br><br>
+    All code written for this project can be found in my repository
+    <a href="https://github.com/bionicOnion/CSE555/tree/master/TextureSynthesis">here</a>.
+  </p>
+
+  <hr>
+
+  <!-- TEXTURE SYNTHESIS -->
+  <h3>Texture Synthesis</h3>
+  <p>
+    <b>TODO</b>
+
+    <h4>Block-Based Synthesis</h4>
+    <b>TODO</b>
+
+    <h4>Synthesis with Minimum-Error Boundary Cuts</h4>
+    <b>TODO</b>
+  </p>
+
+  <hr>
+
+  <!-- TEXTURE TRANSFER -->
+  <h3>Texture Transfer</h3>
+  <p>
+    <b>TODO</b>
+  </p>
+
+  <hr>
+
+  <!-- CHALLENGES FACED -->
+  <h3>Design Challenges</h3>
+  <p>
+    <b>TODO</b>
+  </p>
+
+  <hr>
+
+  <!-- EXTRA CREDIT -->
+  <h3>Extra Credit</h3>
+  <p>
+    <h4>Variable Block &amp; Overlap Size</h4>
+    <b>TODO</b>
+
+    <h4>Variance of Correspondence</h4>
+    <b>TODO</b>
+  </p>
+
+</body>
