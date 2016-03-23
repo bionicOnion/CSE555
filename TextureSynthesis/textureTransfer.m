@@ -49,11 +49,19 @@ function synthesized = textureTransfer(textureSrc, contentSrc, patchDims, overla
                 end
             end
             
+            % Calculate the appropriate minimum-error cut mask
+            vertMask = horzcat(minErrCut(rgb2gray(bestErrSurface(1:overlap(1),:,:))'), ...
+                ones(size(targetPatch,2), size(targetPatch,1)-overlap(1)))';
+            horizMask = vertcat(minErrCut(rgb2gray(bestErrSurface(:,1:overlap(2),:)))', ...
+                ones(size(targetPatch,2)-overlap(2), size(targetPatch,1)))';
+            combinedMask = repmat(vertMask & horizMask, [1, 1, 3]);
+            
             % Insert the best-matching patch into the generated image
-            % TODO -- Switch to min-cut implementation
-            synthesized(j:j + size(targetPatch,1) - 1, i:i + size(targetPatch,2) - 1, :) = ...
-                textureSrc(bestPatch(2):bestPatch(2) + size(targetPatch,1) - 1, ...
-                    bestPatch(1):bestPatch(1) + size(targetPatch,2) - 1, :);
+            texPatch = textureSrc(bestPatch(2):bestPatch(2) + size(targetPatch,1) - 1, ...
+                bestPatch(1):bestPatch(1) + size(targetPatch,2) - 1, :);
+            newPatch = combinedMask.*texPatch + (1 - combinedMask).*synthesized(j:j + ...
+                size(targetPatch,1) - 1, i:i + size(targetPatch,2) - 1, :);
+            synthesized(j:j + size(targetPatch,1) - 1, i:i + size(targetPatch,2) - 1, :) = newPatch;
         end
     end
 end

@@ -5,15 +5,15 @@ farm = im2double(imread('textures/farm.jpeg'));
 
 % Generate synthesized versions of the textures without minimum-error cutting
 disp('Creating tiled synthetic textures...');
-waterSynth = synthesizeFromTexture(water, [50, 50], [5, 5], [400, 400, 3]);
-leafSynth = synthesizeFromTexture(leaf, [50, 50], [5, 5], [400, 400, 3]);
-farmSynth = synthesizeFromTexture(farm, [50, 50], [5, 5], [400, 400, 3]);
+waterSynth = synthesizeFromTexture(water, [50, 50], [5, 5], [400, 600, 3]);
+leafSynth = synthesizeFromTexture(leaf, [100, 100], [10, 10], [1333, 2000, 3]);
+farmSynth = synthesizeFromTexture(farm, [100, 100], [10, 10], [700, 1050, 3]);
 
 % Generate synthesized versions of the textures WITH minimum-error cutting
 disp('Creating minimum-error cut synthetic textures...');
-waterSynthMinCut = synthTexMinCut(water, [50, 50], [5, 5], [400, 400, 3]);
-leafSynthMinCut = synthTexMinCut(leaf, [50, 50], [5, 5], [400, 400, 3]);
-farmSynthMinCut = synthTexMinCut(farm, [50, 50], [5, 5], [400, 400, 3]);
+waterSynthMinCut = synthTexMinCut(water, [50, 50], [5, 5], [400, 600, 3]);
+leafSynthMinCut = synthTexMinCut(leaf, [100, 100], [10, 10], [1333, 2000, 3]);
+farmSynthMinCut = synthTexMinCut(farm, [100, 100], [10, 10], [700, 1050, 3]);
 
 % Display the synthetic images
 figure(1), subplot(1,3,1), imshow(water), ...
