@@ -60,10 +60,67 @@
   <!-- TEXTURE SYNTHESIS -->
   <h3>Texture Synthesis</h3>
   <p>
-    <b>TODO</b>
+    Both of the approaches described below rely on the same basic method: blocks of the texture
+    image are copied into the synthetic image based on how well they align with the surrounding
+    blocks already in place (e.g. if the pattern present in surrounding blocks would be more or less
+    seamlessly continued in the newly inserted block). This is accomplished by computing the SSD
+    error of an overlapping region between the blocks already placed in the synthetic image and
+    candidate blocks from the source image. The difference between the methodologies comes in the
+    final step: block-based synthesis simply copies these texture blocks exactly as they appeared in
+    the source image (meaning as rectangular patches), whereas the minimum-error boundary cut
+    approach attempts to find a cut which will minimize the appearance of the 'seam' between
+    neighboring blocks.
 
     <h4>Block-Based Synthesis</h4>
     <b>TODO</b>
+
+    <hr class="invisible">
+    
+    <figure>
+      <a href="images/large/00904u.tif.bmp">
+        <img src="images/small/00904u.tif_small.bmp" alt="Source Water Texture" />
+      </a>
+      <figcaption>Source image of a water texture</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/large/noedge.bmp">
+        <img src="images/small/noedge_small.bmp" alt="Synthesized Water Texture" />
+      </a>
+      <figcaption>A synthesized image generated from the water texture</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/large/00904u.tif.bmp">
+        <img src="images/small/00904u.tif_small.bmp" alt="Source Leaf Texture" />
+      </a>
+      <figcaption>Source image of a leaf texture</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/large/noedge.bmp">
+        <img src="images/small/noedge_small.bmp" alt="Synthesized Leaf Texture" />
+      </a>
+      <figcaption>A synthesized image generated from the leaf texture</figcaption>
+    </figure>
+
+    <hr class="invisible">
+
+    <figure>
+      <a href="images/large/00904u.tif.bmp">
+        <img src="images/small/00904u.tif_small.bmp" alt="Source Farm Texture" />
+      </a>
+      <figcaption>Source image of a farm texture</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/large/noedge.bmp">
+        <img src="images/small/noedge_small.bmp" alt="Synthesized Farm Texture" />
+      </a>
+      <figcaption>A synthesized image generated from the farm texture</figcaption>
+    </figure>
 
     <h4>Synthesis with Minimum-Error Boundary Cuts</h4>
     <b>TODO</b>
