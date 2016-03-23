@@ -33,8 +33,7 @@ function synthesized = synthTexMinCut(srcTexture, patchDims, overlap, synthDims)
             for ii = 1:size(targetPatch,2):size(srcTexture, 2) - size(targetPatch,2)
                 for jj = 1:size(targetPatch,1):size(srcTexture, 1) - size(targetPatch,1)
                     testPatch = srcTexture(jj:jj + size(targetPatch,1) - 1, ...
-                        ii:ii + size(targetPatch,2) - 1, :);
-                    testPatch = testPatch.*(targetPatch ~= 0);
+                        ii:ii + size(targetPatch,2) - 1, :).*(targetPatch ~= 0);
                     testErrSurface = (testPatch - targetPatch).^2;
                     testErr = sum(testErrSurface(:));
                     
