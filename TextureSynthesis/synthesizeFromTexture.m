@@ -27,7 +27,6 @@ function synthesized = synthesizeFromTexture(srcTexture, patchDims, overlap, syn
             targetPatch = synthesized(j:yBound, i:xBound, :);
             
             % Find the minimum-error patch
-            bestErrSurface = ones(patchDims);
             bestErr = Inf;
             bestPatch = [0, 0];
             for ii = 1:size(targetPatch,2):size(srcTexture, 2) - size(targetPatch,2)
@@ -40,7 +39,6 @@ function synthesized = synthesizeFromTexture(srcTexture, patchDims, overlap, syn
                     
                     if testErr < bestErr
                         bestErr = testErr;
-                        bestErrSurface = testErrSurface;
                         bestPatch = [ii, jj];
                     end
                 end
