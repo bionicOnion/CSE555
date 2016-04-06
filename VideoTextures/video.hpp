@@ -27,7 +27,7 @@ public:
   int getFourCC(void) const;
   cv::Mat getFrame(unsigned int);
   size_t getFrameCount(void) const;
-  int loadVideo(std::string);
+  int loadVideo(std::string, int);
 private:
   int fourcc;
   std::vector<cv::Mat> frames;

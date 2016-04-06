@@ -17,7 +17,7 @@ VideoFrames::VideoFrames() :
 {}
 
 
-int VideoFrames::loadVideo(std::string videoFile)
+int VideoFrames::loadVideo(std::string videoFile, int numFrames)
 {
   // Open the spcified video file
   cv::VideoCapture textureVideo(videoFile);
@@ -34,7 +34,7 @@ int VideoFrames::loadVideo(std::string videoFile)
   // Load the video into a vector of frames
   auto framesRead = -1;
   auto frameCount = MIN(static_cast<unsigned int>(textureVideo.get(CV_CAP_PROP_FRAME_COUNT)),
-    MAX_FRAMES);
+    numFrames);
   frames.resize(frameCount);
   cv::Mat frame;
   while (textureVideo.read(frame) && ++framesRead < frameCount)
