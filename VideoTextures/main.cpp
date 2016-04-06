@@ -54,6 +54,7 @@ int main(int argc, char** argv)
 
   cv::Mat show;
   cv::resize(transitionProbs, show, cv::Size(400, 400), 0, 0, cv::INTER_NEAREST);
+  show.convertTo(show, CV_8UC1, 255);
   cv::imshow("Transitions", show);
   cv::imwrite("transitionProbs.bmp", show);
   cv::waitKey();
