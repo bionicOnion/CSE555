@@ -1,0 +1,175 @@
+<!DOCTYPE HTML>
+
+<head>
+  <meta charset="UTF-8">
+  <title>CSE 555: Project 4</title>
+  <link rel="stylesheet" href="../cse555.css">
+  <script type="text/javascript" src="http://latex.codecogs.com/latexit.js"></script>
+</head>
+<body>
+  <h1>CSE 555: Project 4</h1>
+  <h2>Video Textures</h2>
+
+  <h2>Robert Miller</h2>
+
+  <div class="heading">
+    <a href="http://www.cse.wustl.edu/~pless/classes/555/project4.html">Project Guidelines</a>
+    ||
+    <a href="http://www.cse.wustl.edu/~pless/classes/555/">Course Website</a>
+    <br>
+    <br>
+    <img src="images/water_generated.gif" alt="CSE 555: Project 4" />
+    <br>
+  </div>
+
+  <hr>
+
+  <!-- PROJECT OVERVIEW -->
+  <h3>Project Overview</h3>
+  <p>
+    Video can make for a more attractive medium than still photography (if nothing else, the motion
+    from one frame to another is likely to catch the eye), but it is fundamentally limited by the
+    simple fact that video clips are finite: all videos will come to an end, at which point the
+    attractive motion will either abruptly stop or will abruptly cut back to the beginning. Although
+    there are techniques for masking this looping by matching up the final frame with the first one,
+    the artificiality of the resultant loop is often evident in the inherent repetition in the
+    video.
+    <br><br>
+    Ideally, instead of looping, videos would simply continue on indefinitely&mdash;precisely where
+    video textures come in. Video textures, defined and described in
+    <a href="http://www.cc.gatech.edu/cpl/projects/videotexture/SIGGRAPH2000/index.htm">this
+    paper</a>, are a way of using existing frames in a video to extend placyback for an arbitrarily
+    long time. To do so, a set of probabilities for transitions from one frame to another are
+    calculated; this table of probabilities is referenced to generate novel videos (for this
+    implementation, videos are generated based on a desired frame count provided by the user, but
+    this could in principle be used to select the next frame in real time, allowing an endless
+    video to be generated without obvious looping points).
+    <br><br>
+    All code written for this project can be found in my repository
+    <a href="https://github.com/bionicOnion/CSE555/tree/master/VideoTextures">here</a>.
+  </p>
+
+  <hr>
+
+  <!-- TEXTURE CREATION -->
+  <h3>Video Texture Creation</h3>
+  <p>
+    As a first step, the provided texture video is loaded from its file and cut into its component
+    frames (which are then stored in a <code>VideoFrames</code> object, which is itself a wrapper
+    for an <code>std::vector&lt;cv::Mat&gt;</code>). The following listing shows this process; for
+    brevity, some non-relevant code (for storing metadata about the video) has been omitted:
+    <br><br>
+    <div class="codeWrapper">
+<code>cv::VideoCapture textureVideo(videoFile);
+
+<span class="reserved">auto</span> framesRead = -1;
+<span class="reserved">auto</span> frameCount = MIN(<span class="reserved">static_cast</span>&lt;<span class="reserved">unsigned int</span>&gt;(textureVideo.get(CV_CAP_PROP_FRAME_COUNT)), numFrames);
+frames.resize(frameCount);
+cv::Mat frame;
+<span class="reserved">while</span> (textureVideo.read(frame) &ampl;&amp; ++framesRead &lt; frameCount)
+  cv::resize(frame, frames[framesRead], cv::Size(), VID_SCALE_FACTOR, VID_SCALE_FACTOR);</code>
+    </div>
+    <br>
+    Given this collection of frames, the set of probabilities of transitioning from one frame to
+    another is computed. First, the sum of squared difference between pixel intensities is computed
+    between every pair of frames in the video:
+    <br><br>
+    <div class="codeWrapper">
+<code><span class="reserved">for</span> (<span class="reserved">unsigned</span> i = 0; i &lt; frameCount; ++i)
+{
+  <span class="reserved">for</span> (<span class="reserved">auto</span> j = i; j &lt; frameCount; ++j)
+  {
+    costMatrix.at&lt;<span class="reserved">double</span>&gt;(i, j) = 0;
+    <span class="reserved">for</span> (<span class="reserved">auto</span> ii = 0; ii &lt; video.getFrame(i).rows; ++ii)
+    {
+      <span class="reserved">for</span> (<span class="reserved">auto</span> jj = 0; jj &lt; video.getFrame(i).cols; ++jj)
+      {
+        <span class="reserved">int16_t</span> error = video.getFrame(i).at&lt;<span class="reserved">uint8_t</span>&gt;(ii, jj) - video.getFrame(j).at&lt;<span class="reserved">uint8_t</span>&gt;(ii, jj);
+        costMatrix.at&lt;<span class="reserved">double</span>&gt;(i, j) += error * error / frameCount;
+      }
+    }
+  }
+}</code>
+    </div>
+    <br>
+    Next, a binomial weighting is applied to attempt to maintain continuity between frames (the
+    error between the prior and following frames is included into an updated error value):
+    <br><br>
+    <div class="codeWrapper">
+<code><span class="reserved">auto</span> costMatrixMod = cv::Mat(frameCount, frameCount, CV_64F);
+<span class="reserved">for</span> (unsigned i = 0; i &lt; frameCount; ++i)
+{
+  <span class="reserved">for</span> (<span class="reserved">auto</span> j = i; j &lt; frameCount; ++j)
+  {
+    costMatrixMod.at&lt;<span class="reserved">double</span>&gt;(i, j) = 0;
+    <span class="reserved">for</span> (int k = 0, ii = i - WEIGHT_TAP_COUNT, jj = j - WEIGHT_TAP_COUNT;
+         k &lt; (WEIGHT_TAP_COUNT * 2) + 1;
+         ++k, ++ii, ++jj)
+    {
+      <span class="reserved">if</span> (ii &lt; 0 || ii &gt;l= frameCount || jj &lt; 0 || jj &gtl= frameCount)
+        costMatrixMod.at&lt;<span class="reserved">double</span>&gt;l(i, j) += WEIGHTS[k];
+      <span class="reserved">else</span>
+        costMatrixMod.at&lt;<span class="reserved">double</span>&gt;l(i, j) += WEIGHTS[k] * costMatrix.at&lt;<span class="reserved">double</span>&gtl(ii, jj);
+    }
+    costMatrixMod.at&lt;<span class="reserved">double</span>&gt;l(j, i) = costMatrixMod.at&lt;<span class="reserved">double</span>&gt;l(i, j);
+  }
+}</code>
+    </div>
+    <br>
+    Finally, the probabilities themselves are computed by computing the average value of all
+    non-zero entries, computing an exponential function based on the error values and a parameter
+    &sigma; (set to 0.1 in the examples on this page), and then normalizing the results such that
+    the results in every column&mdash;corresponding to the values for a given image&mdash;sum to
+    one, forming proper probabilities:
+    <br><br>
+    <div class="codeWrapper">
+<code><span class="reserved">auto</span> avg = 0.0;
+<span class="reserved">auto</span> avgVals = 0;
+<span class="reserved">for</span> (<span class="reserved">unsigned</span> i = 0; i &lt; frameCount; ++i)
+{
+  <span class="reserved">for</span> (<span class="reserved">auto</span> j = 0; j &lt; frameCount; ++j)
+  {
+    costMatrix.at&lt;<span class="reserved">double</span>&gt;(i, j) = costMatrixMod.at&lt;<span class="reserved">double</span>&gt;(i, j);
+    <span class="reserved">if</span> (costMatrix.at&lt;<span class="reserved">double</span>&gt;(i, j) != 0)
+    {
+      avg += costMatrix.at&lt;<span class="reserved">double</span>&gt;(i, j);
+      ++avgVals;
+    }
+  }
+}
+avg /= avgVals;
+
+<span class="reserved">for</span> (<span class="reserved">unsigned</span> i = 0; i &lt; frameCount - 1; ++i)
+{
+  <span class="reserved">for</span> (<span class="reserved">auto</span> j = 0; j &lt; frameCount; ++j)
+  {
+    costMatrix.at&lt;<span class="reserved">double</span>&gt;(i, j) = exp(-costMatrix.at&lt;<span class="reserved">double</span>&gt;(i + 1, j) / (avg * sigmaFactor));
+  }
+}
+<span class="reserved">for</span> (<span class="reserved">auto</span> j = 0; j &lt; frameCount; ++j)
+  costMatrix.at&lt;<span class="reserved">double</span>&gt;(frameCount - 1, j) = 0;
+
+<span class="reserved">for</span> (<span class="reserved">unsigned</span> i = 0; i &lt; frameCount; ++i)
+{
+  <span class="reserved">auto</span> sum = 0.0;
+  <span class="reserved">for</span> (<span class="reserved">auto</span> j = 0; j &lt; frameCount; ++j)
+  {
+    sum += costMatrix.at&lt;<span class="reserved">double</span>&gt;(i, j);
+  }
+  <span class="reserved">for</span> (<span class="reserved">auto</span> j = 0; j &lt; frameCount; ++j)
+  {
+    costMatrix.at&lt;<span class="reserved">double</span>&gt;(i, j) /= sum;
+  }
+}</code>
+    </div>
+  </p>
+
+  <hr>
+
+  <!-- EXAMPLES -->
+  <h3>Examples</h3>
+  <p>
+
+  </p>
+
+</body>
