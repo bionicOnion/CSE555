@@ -118,7 +118,7 @@ cv::Mat frame;
     <br>
     Finally, the probabilities themselves are computed by computing the average value of all
     non-zero entries, computing an exponential function based on the error values and a parameter
-    &sigma; (set to 0.1 in the examples on this page), and then normalizing the results such that
+    &sigma; (set to 0.025 in the examples on this page), and then normalizing the results such that
     the results in every column&mdash;corresponding to the values for a given image&mdash;sum to
     one, forming proper probabilities:
     <br><br>
@@ -251,15 +251,31 @@ avg /= avgVals;
       </a>
       <figcaption>Generated video of a waterfall</figcaption>
     </figure>
+  </p>
 
-    <hr class="invisible" />
+  <hr>
 
-    The results obtained are imperfect and somewhat jerky; this is likely a result of the &sigma;
-    value provided being too high (as can be seen in the probability images above, the likelihood
-    of relatively arbitrary frames being chosen is high, meaning that there will be a significant
-    amount of jumpiness in the generated video). With more time to work on the project, it would
-    likely have been possible to improve these results by tuning parameters, but the processing
-    time inherent in creating these videos has unfortunately precluded this possibility.
+  <!-- ANALYSIS -->
+  <h3>Analysis</h3>
+  <p>
+  The results obtained were reasonably good (although some tweaking of parameters might have been
+  able to produce better results; the setting for &sigma; was largely arbitrary and came about as
+  the result of limited trial and error&mdash;changing the value amounts to a tradeoff between
+  selecting possible looping points and allowing chunks of continuous video to play unimpeded).
+  <br><br>
+  As it stands, some visible jumps are still present in the generated videos; addressing this issue
+  would likely mean both tweaking parameters and implementing some of the additional processing
+  suggested in the paper (such as finding locally maximal points to be the only possible
+  transitions, thus reducing the probability of a given transition being jumpy, or using image
+  warping/fading to mask the transition as it occurs).
+  <br><br>
+  The main issue, however, is the simple fact that processing video takes time, and the
+  implementation described above is still sometwhat poorly optimized (namely because it computes
+  an embarassingly parallel problem in a single thread). It is for this reason that the resulting
+  videos are lower in resolution than the source videos; making the processing feasible meant
+  that reducing the amount of data to process was necessary. I had considered attempting to leverage
+  the GPU to compute the probabilities, but ultimately elected to stay with the "na&iuml;ve"
+  version above.
   </p>
 
 </body>
