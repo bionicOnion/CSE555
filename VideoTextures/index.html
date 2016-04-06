@@ -162,6 +162,56 @@ avg /= avgVals;
   }
 }</code>
     </div>
+    <br>
+    The following examples show images of the probability matrices computed in the fashion
+    defined above:
+
+    <hr class="invisible" />
+
+    <figure>
+      <a href="images/bird_probs.bmp">
+        <img src="images/bird_probs.bmp" alt="Probabilities for the bird video" />
+      </a>
+      <figcaption>The computed probabilites for the bird video texture</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/waterfall_probs.bmp">
+        <img src="images/waterfall_probs.bmp" alt="Probabilities for the waterfall video" />
+      </a>
+      <figcaption>The computed probabilites for the waterfall video texture</figcaption>
+    </figure>
+
+    <hr class="invisible" />
+
+    Given these probabilities, the last step in the process is to generate some new video from
+    the existing frames with probabalistic frame transitions. Starting from the first frame of
+    the original video, the frame at the given index is inserted into the video and then the
+    index of the next frame is selected by sampling from the computed distribution:
+    <br><br>
+    <div class="codeWrapper">
+<code><span class="reserved">auto</span> currFrameIdx = 0;
+<span class="reserved">for</span> (<span class="reserved">auto</span> i = 0; i &lt; desiredLength; ++i)
+{
+  genVid &lt;&lt; texVideo.getFrame(currFrameIdx);
+  currFrameIdx = sampleFromDistribution(transitionProbs, currFrameIdx);
+}</code>
+    </div>
+    <br>
+    The <code>sampleFromDistribution</code> function is implemented as follows:
+    <br><br>
+    <div class="codeWrapper">
+<code><span class="reserved">auto</span> randVal = <span class="reserved">static_cast</span>&lt;<span class="reserved">float</span>gt;(rand()) / <span class="reserved">static_cast</span>;<span class="reserved">auto</span>gt;(RAND_MAX);
+<span class="reserved">auto</span> selectedIndex = 0;
+<span class="reserved">auto</span> distSum = distribution.at&lt;<span class="reserved">double</span>gt;(currIndex, selectedIndex);
+<span class="reserved">while</span> (distSum &lt; randVal &amp;&amp; selectedIndex &lt; distribution.rows - 1)
+{
+  ++selectedIndex;
+  distSum += distribution.at&lt;<span class="reserved">double</span>gt;(currIndex, selectedIndex);
+}
+<span class="reserved">return</span> selectedIndex;</code>
+    </div>
+    <br>
   </p>
 
   <hr>
@@ -169,7 +219,47 @@ avg /= avgVals;
   <!-- EXAMPLES -->
   <h3>Examples</h3>
   <p>
+    For both of the following examples, the animation on the left is the source video that was used
+    to generate the video texture; the right animation is the generated video.
 
+    <hr class="invisible" />
+
+    <figure>
+      <a href="images/bird_cut.gif">
+        <img src="images/bird_cut.gif" alt="Bird video texture" />
+      </a>
+      <figcaption>Video texture of a bird</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/bird_generated.gif">
+        <img src="images/bird_generated.gif" alt="Bird generated video" />
+      </a>
+      <figcaption>Generated video of a bird</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/waterfall_cut.gif">
+        <img src="images/waterfall_cut.gif" alt="Waterfall video texture" />
+      </a>
+      <figcaption>Video texture of a waterfall</figcaption>
+    </figure>
+
+    <figure>
+      <a href="images/waterfall_generated.gif">
+        <img src="images/water_generated.gif" alt="Waterfall generated video" />
+      </a>
+      <figcaption>Generated video of a waterfall</figcaption>
+    </figure>
+
+    <hr class="invisible" />
+
+    The results obtained are imperfect and somewhat jerky; this is likely a result of the &sigma;
+    value provided being too high (as can be seen in the probability images above, the likelihood
+    of relatively arbitrary frames being chosen is high, meaning that there will be a significant
+    amount of jumpiness in the generated video). With more time to work on the project, it would
+    likely have been possible to improve these results by tuning parameters, but the processing
+    time inherent in creating these videos has unfortunately precluded this possibility.
   </p>
 
 </body>
