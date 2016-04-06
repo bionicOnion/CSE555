@@ -30,7 +30,7 @@ const unsigned int PBAR_TITLE_WIDTH = 26;
 const uint8_t PERCENT_WIDTH = 10;
 
 // General constants
-const float SIGMA_FACTOR = 0.1f;
+const float SIGMA_FACTOR = 0.025f;
 const float VID_SCALE_FACTOR = 0.25f;
 const float WEIGHTS[] = { 1.0f/16, 4.0f/16, 6.0f/16, 4.0f/16, 1.0f/16 };
 const int WEIGHT_TAP_COUNT = 2;
