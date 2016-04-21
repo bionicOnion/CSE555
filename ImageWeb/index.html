@@ -7,7 +7,7 @@
 </head>
 <body>
   <h1>CSE 555: Final Project</h1>
-  <h2>Automated Image Web Creation</h2>
+  <h2>Tesselation and Rendering: Image Web Filter</h2>
 
   <h2>Robert Miller</h2>
 
@@ -26,7 +26,13 @@
   <!-- PROPOSAL OVERVIEW -->
   <h3>Proposal Overview</h3>
   <p>
-
+    For my final project, I intend to implement a software package to generate images similar to the
+    one shown above&mdash;images which contain the low-frequency detail of some source image encoded
+    within a graph. To do so, I will construct a probability distribution for point locations (based
+    on the intensity of the image, among other factors), sample some number of points from the
+    distribution, connect the points to one another, and then produce a final image. This approach
+    could be expanded to work with videos, replacing each frame with a 'web' image (with some work
+    being done to smoothly transition from one frame to the next).
   </p>
 
   <hr>
@@ -36,6 +42,8 @@
   <p>
 
   </p>
+
+  <hr>
 
   <!-- DATA -->
   <h3>Input &amp; Output Data</h3>
