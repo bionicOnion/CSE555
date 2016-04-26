@@ -1,0 +1,102 @@
+<!DOCTYPE HTML>
+
+<head>
+  <meta charset="UTF-8">
+  <title>CSE 555: Final Project</title>
+  <link rel="stylesheet" href="../cse555.css">
+</head>
+<body>
+  <h1>CSE 555: Final Project</h1>
+  <h2>Tesselation and Rendering: Image Web Filter</h2>
+
+  <h2>Robert Miller</h2>
+
+  <div class="heading">
+    <a href="http://www.cse.wustl.edu/~pless/classes/555/projectFinal.html">Project Guidelines</a>
+    ||
+    <a href="http://www.cse.wustl.edu/~pless/classes/555/">Course Website</a>
+    <br>
+    <br>
+    <img src="images/projectIdea.jpeg" alt="CSE 555: Final Project" />
+    <br>
+  </div>
+
+  <hr>
+
+  <!-- PROPOSAL OVERVIEW -->
+  <h3>Proposal Overview</h3>
+  <p>
+    For my final project, I intend to implement a software package to generate images similar to the
+    one shown above&mdash;images which contain the low-frequency detail of some source image encoded
+    within a graph. To do so, I will construct a probability distribution for point locations (based
+    on the intensity of the image, among other factors), sample some number of points from the
+    distribution, connect the points to one another, and then produce a final image. This approach
+    could be expanded to work with videos, replacing each frame with a 'web' image (with some work
+    being done to smoothly transition from one frame to the next).
+  </p>
+
+  <hr>
+
+  <!-- ALGORITHM -->
+  <h3>Algorithm &amp; Implementation Plan</h3>
+  <p>
+    I intend to implement this project with a mixture of CUDA, and OpenGL. The pipeline that I
+    intend to follow is as follows:
+
+    <ol>
+      <li>
+        <b>Load images/video</b>&mdash;I will likely use OpenCV for file access, but (if time
+        permits) I will try to find other solutions or possibly make my own.
+      </li>
+      <li>
+        <b>Copy image to the GPU</b>&mdash;In the interest of efficiency, most of the processing
+        work will be done on the GPU. Due to my past experience with CUDA, I will likely use that as
+        my tool of choice, but I may attempt to use OpenCL instead to provide a more general
+        solution.
+      </li>
+      <li>
+        <b>Calcualate a probability distribution</b>&mdash;Multiple different elements will be ised
+        to generate the distribution: the intensity of the image, edge data (computed with Sobel
+        edge detection at a variety of scales blended together), and the position of points from
+        prior frames (in the context of video). Additional factors may be implemented based on
+        experimentation once I've got more results to draw from. 
+      </li>
+      <li>
+        <b>Sample points from the distribution</b>&mdash;Firstly, a table corresponding to the CDF
+        of the generated distribution will be calculated; following this, random numbers will be
+        selected and used to draw points. The number of points to draw per image is a variable that
+        I intend to adjust during development, but I will likely implement it such that the number
+        of points sampled is proportional to the resolution of the image.
+      </li>
+      <li>
+        <b>Tesselate the points</b>&mdash;Points will be tesselate with Delaunay triangularization
+        (specifically with an implementation based off of
+        <a href="http://www.comp.nus.edu.sg/~tants/delaunay2DDownload.html">this</a> GPU-based
+        version of the algorithm, though the algorithm can likely be greatly simplified for the
+        specific cases in which it will be used in this context).
+      </li>
+      <li>
+        <b>Generate an image</b>&mdash;The points and lines computed in the prior steps will be
+        passed to OpenGL for drawing. I intend to implement multiple different coloring modes:
+        <ul>
+          <li>Solid color lines &amp; background</li>
+          <li>Lines with color sampled from source image</li>
+          <li>Triangles colored with average color from that region of the source image</li>
+        </ul>
+      </li>
+    </ol>
+  </p>
+
+  <hr>
+
+  <!-- DATA -->
+  <h3>Input &amp; Output Data</h3>
+  <p>
+    The inputs for this project will be still images and single-shot videos which will undergo the
+    processing defined above to produce a similar image. The output image will have the same
+    dimensions as the input image, and will appear similar to the input image (much like the images
+    shown at the top of this page look like faces). The same principle will apply to input videos;
+    every frame will be processed individually and then strung together into an ouput video similar
+    to the input video.
+  </p>
+</body>
