@@ -147,13 +147,20 @@ __global__ void generateCDF(double* distribution, size_t distrLen)
     short x = threadIdx.x + blockIdx.x * blockDim.x;
     short y = threadIdx.y + blockIdx.y * blockDim.y;
     uint16_t offset = x + (y * dims.x);
-    if (x > dims.x || y > dims.y)
+    if (offset > distrLen)
         return;
 
     // Calculate cumulative sum
-    // TODO
-
-    __syncthreads();
+    // TODO improve to work with things other than powers of 2
+    // TODO fill in gaps post-reduction
+    uint16_t thresh = dims.x * dims.y / 2;
+    while (thresh > 0)
+    {
+      if (offset < thresh)
+        distribution[offset] += distribution[thresh + offset];
+      __syncthreads();
+      thresh /= 2;
+    }
 
     // Normalize the distribution
     distribution[offset] /= distribution[distrLen - 1];
