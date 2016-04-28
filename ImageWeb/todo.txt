@@ -1,0 +1,8 @@
+To Do List:
+
+Improve ImageResource implementation
+    Try to divest from OpenCV
+
+Fill in comments for file headers
+
+Make argument parsing case-insensitive
