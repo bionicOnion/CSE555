@@ -5,6 +5,9 @@
 
 #include <iostream>
 
+// OpenCV
+#include <opencv2/opencv.hpp>
+
 #include "types.hpp"
 #include "util.hpp"
 
@@ -90,4 +93,11 @@ ReturnCode printErrorMsgCUDA(cudaError_t errCode, std::string file, int lineNum)
         << errCode << "(" << cudaGetErrorString(errCode) << ")";
 
     return CUDA_ERROR;
+}
+
+
+void displayPreviewImage(Image img, short2 dims)
+{
+    imshow("Image Preview", cv::Mat(dims.y, dims.x, CV_8UC3, img));
+    cv::waitKey();
 }

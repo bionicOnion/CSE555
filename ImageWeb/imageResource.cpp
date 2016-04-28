@@ -28,6 +28,7 @@ uint8_t ImageResource::getFPS() const
     { return fps; }
 
 
+// TODO convert from BGR to RGB color space
 Image ImageResource::getFrame(uint16_t index) const
     { return index < frames.size() ? Image(frames[index].ptr()) : nullptr; }
 
