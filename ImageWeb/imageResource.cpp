@@ -53,6 +53,7 @@ ReturnCode ImageResource::display(void) const
 
 	if (type == InputType::Image)
 	{
+		// TODO Scale image to fit display
 		cv::imshow("Image", frames[0]);
 		cv::waitKey();
 	}

@@ -20,6 +20,7 @@ typedef struct
 } Color;
 typedef Color Pixel;
 typedef Pixel* Image;
+typedef channel_t* ChannelBuf;
 
 
 // Parameter types
@@ -50,6 +51,9 @@ typedef struct
     InputType inputType;
     std::string inputFile;
     std::string outputFile;
+
+	bool debug;
+	bool timing;
 } ParamBundle;
 
 

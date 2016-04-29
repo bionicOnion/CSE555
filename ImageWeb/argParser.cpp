@@ -27,7 +27,9 @@ ReturnCode parseArguments(ParamBundle* params, int argc, char** argv)
     params->mode = DEFAULT_COLORING_MODE;
     params->foreground = DEFAULT_FOREGROUND;
     params->background = DEFAULT_BACKGROUND;
-    params->inputType = InputType::Unset;
+	params->inputType = InputType::Unset;
+	params->debug = false;
+	params->timing = false;
 
     // Insert provided values into the parameter bundle
     retCode = parse(params, argc, argv);
@@ -73,6 +75,10 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
             else
                 return UNRECOGNIZED_COLORING_MODE;
         }
+		else if (DEBUG_MODE_ARGS.find(argv[i]) != DEBUG_MODE_ARGS.end())
+		{
+			params->debug = true;
+		}
         else if (FOREGROUND_COLOR_ARGS.find(argv[i]) != FOREGROUND_COLOR_ARGS.end())
         {
 			// TODO Handle possible exceptions
@@ -162,6 +168,10 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
 				params->pointRatio = 1;
 			}
         }
+		else if (TIMING_ARGS.find(argv[i]) != TIMING_ARGS.end())
+		{
+			params->timing = true;
+		}
         else if (VIDEO_FILE_ARGS.find(argv[i]) != VIDEO_FILE_ARGS.end())
         {
             if (params->inputType != InputType::Unset)
@@ -229,6 +239,7 @@ void printUsage(std::string programName)
     std::cout << "    [a/avg/average]: Foreground color is average of image color" << std::endl;
     std::cout << "    [p/pix/pixel]: Foreground color is sampled from input image" << std::endl;
     std::cout << "    [s/solid]: Foreground/background colors are user-specified" << std::endl;
+	std::cout << "  Debug Mode:                      [-d/--debug]" <<std::endl;
 	std::cout << "  Foreground Color:                [-f/--foreground r g b]" << std::endl;
 	std::cout << "  Output File:                     [-o/--outputFile filename]" << std::endl;
     std::cout << "  Point Location Historicity:      [-h/--historicity value]" << std::endl;

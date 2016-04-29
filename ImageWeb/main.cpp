@@ -26,7 +26,8 @@ int main(int argc, char** argv)
     if (retCode != SUCCESS)
         return PRINT_ERR_MSG(retCode);
 
-//	printParams(&params);
+	if (params.debug)
+		printParams(&params);
 
     // Load the specified image/video
     ImageResource input(params.inputType);

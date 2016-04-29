@@ -20,17 +20,20 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="argParser.cpp" />
-    <ClCompile Include="imageProcessor.cpp" />
     <ClCompile Include="imageResource.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="argParser.hpp" />
+    <ClInclude Include="constants.hpp" />
     <ClInclude Include="imageProcessor.hpp" />
     <ClInclude Include="imageResource.hpp" />
     <ClInclude Include="types.hpp" />
     <ClInclude Include="util.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="imageProcessor.cu" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{8261ED50-9E38-4A2E-A900-203A411967ED}</ProjectGuid>
