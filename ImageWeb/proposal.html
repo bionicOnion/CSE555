@@ -55,7 +55,7 @@
         solution.
       </li>
       <li>
-        <b>Calcualate a probability distribution</b>&mdash;Multiple different elements will be ised
+        <b>Calculate a probability distribution</b>&mdash;Multiple different elements will be ised
         to generate the distribution: the intensity of the image, edge data (computed with Sobel
         edge detection at a variety of scales blended together), and the position of points from
         prior frames (in the context of video). Additional factors may be implemented based on
@@ -98,5 +98,19 @@
     shown at the top of this page look like faces). The same principle will apply to input videos;
     every frame will be processed individually and then strung together into an ouput video similar
     to the input video.
+  </p>
+
+  <!--PROGRESS-->
+  <h3>Project Progress</h3>
+  <p>
+    As of a few days after submitting this proposal, I've made some initial progress (which can be
+    found in my repository <a href="https://github.com/bionicOnion/CSE555/tree/master/ImageWeb">
+    here</a>). As of this writing (on 4/28/16), I have implemented the general framework for the
+    application, including argument parsing, a set of debugging utilities, links to OpenCV and
+    CUDA, a wrapper for handling images and videos as ImageResource objects, and initial
+    implementations of the CUDA pipeline. In effect, everything through the first half of the
+    third step listed above is complete, and I will be able to finish up the working on computing
+    the distribution in the next few days.
+    </a>)
   </p>
 </body>
