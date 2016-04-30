@@ -239,12 +239,13 @@ void printUsage(std::string programName)
     std::cout << "    [a/avg/average]: Foreground color is average of image color" << std::endl;
     std::cout << "    [p/pix/pixel]: Foreground color is sampled from input image" << std::endl;
     std::cout << "    [s/solid]: Foreground/background colors are user-specified" << std::endl;
-	std::cout << "  Debug Mode:                      [-d/--debug]" <<std::endl;
-	std::cout << "  Foreground Color:                [-f/--foreground r g b]" << std::endl;
-	std::cout << "  Output File:                     [-o/--outputFile filename]" << std::endl;
+	  std::cout << "  Debug Mode:                      [-d/--debug]" <<std::endl;
+	  std::cout << "  Foreground Color:                [-f/--foreground r g b]" << std::endl;
+	  std::cout << "  Output File:                     [-o/--outputFile filename]" << std::endl;
     std::cout << "  Point Location Historicity:      [-h/--historicity value]" << std::endl;
     std::cout << "  Intensity vs. Edges Weight:      [-w/--weightRatio value]" << std::endl;
-    std::cout << "  Point Count to Resolution Ratio: [-r/--pointRatio value]" << std::endl;
+	  std::cout << "  Point Count to Resolution Ratio: [-r/--pointRatio value]" << std::endl;
+	  std::cout << "  Record Timings:                  [-t/--time]" << std::endl;
 }
 
 
