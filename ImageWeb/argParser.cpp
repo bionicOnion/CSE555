@@ -201,7 +201,6 @@ ReturnCode validate(ParamBundle* params)
         return ARG_OUT_OF_BOUNDS;
 	if (params->historicityWeight < 0 || params->historicityWeight > 1)
         return ARG_OUT_OF_BOUNDS;
-
 	if (params->inputType == InputType::Unset || params->inputFile == "")
         return NO_INPUT_FILE;
 

@@ -134,31 +134,15 @@ void displayPreviewChannelBufGPU(ChannelBuf img, short2 dims)
 }
 
 
-void displayImagePyramidGPU(ChannelBuf img, short2 dims)
+void visualizeDistr(float* distr, short2 dims)
 {
-	uint32_t pyramidOffset = 0;
-	uint8_t numPyramidLevels = 0;
-	while (dims.x > MIN_PYRAMID_SIZE && dims.y > MIN_PYRAMID_SIZE
-		&& numPyramidLevels < MAX_PYRAMID_LEVELS)
-	{
-		displayPreviewChannelBufGPU(img + pyramidOffset, dims);
-		pyramidOffset += dims.x * dims.y;
-		dims.x /= 2;
-		dims.y /= 2;
-		++numPyramidLevels;
-	}
-}
-
-
-void visualizeDistr(double* distr, short2 dims)
-{
-    auto buf = reinterpret_cast<double*>(malloc(dims.x * dims.y * sizeof(double)));
-	if (cudaMemcpy(buf, distr, dims.x*dims.y*sizeof(double), cudaMemcpyDeviceToHost) != cudaSuccess)
+    auto buf = reinterpret_cast<float*>(malloc(dims.x * dims.y * sizeof(float)));
+	if (cudaMemcpy(buf, distr, dims.x*dims.y*sizeof(float), cudaMemcpyDeviceToHost) != cudaSuccess)
     {
         free(buf);
         return;
     }
-    imshow("Distribution", cv::Mat(dims.y, dims.x, CV_64FC1, buf));
+    imshow("Distribution", cv::Mat(dims.y, dims.x, CV_32FC1, buf));
     cv::waitKey();
     free(buf);
 }
