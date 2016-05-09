@@ -1,0 +1,255 @@
+<!DOCTYPE HTML>
+
+<head>
+  <meta charset="UTF-8">
+  <title>CSE 555: Final Project</title>
+  <link rel="stylesheet" href="../cse555.css">
+</head>
+<body>
+  <h1>CSE 555: Final Project</h1>
+  <h2>Automated Generation of Image Webs</h2>
+
+  <h2>Robert Miller</h2>
+
+  <div class="heading">
+    <a href="http://www.cse.wustl.edu/~pless/classes/555/projectFinal.html">Project Guidelines</a>
+    ||
+    <a href="http://www.cse.wustl.edu/~pless/classes/555/">Course Website</a>
+    ||
+    <a href="http://bioniconion.github.io/CSE555/ImageWeb/proposal.html">Project Proposal</a>
+    <br>
+    <br>
+    <img src="images/TODO.jpeg" alt="CSE 555: Final Project" />
+    <br>
+  </div>
+
+  <hr>
+
+
+  <!-- PROJECT OVERVIEW -->
+  <h3>Project Overview</h3>
+  <p>
+    <b>TODO</b>
+  </p>
+
+  <hr>
+
+
+  <!-- PIPELINE -->
+  <h3>Pipeline Description</h3>
+  <p>
+    As described in the <a href="http://bioniconion.github.io/CSE555/ImageWeb/proposal.html">
+    proposal</a> for this project, generation of the image web is broken down into a
+    multi-stage pipeline, the bulk of which is computed on the GPU using Nvidia's CUDA technology.
+    The final pipeline (described in more detail in the Implementation section below) is as folows,
+    with the middle steps (4 through 7) being repeated for every frame:
+    <ol>
+      <li>
+        <b>Parsing arguments</b>&mdash;Multiple parameters are exposed to the user through the use
+        of command-line arguments, allowing granular control over the output produced by the
+        application. Although only an image or video are required as inputs (specified with either
+        '-i/--image' or '-v/--video'), users can also set foreground and background colors for the
+        generated images, which coloring mode to use (from a set of options), the name of the output
+        file, the relative weighting applied to various factors of the computation, a seed to use
+        for random number generation (used in sampling points for tesselation), and whether or not
+        debugging or timing information should be recorded and displayed.
+      </li>
+      <li>
+        <b>Loading image resources</b>&mdash;Images and videos are loaded using OpenCV into an
+        <code>ImageResource</code> object, a wrapper which allows both types of input to be handled
+        more or less equivalently: any conditional logic relating to saving, loading, or accessing
+        the different media types is encapsulated in this one class, simplifying the amount of work
+        that code in the main pipeline needs to do. In effect, images are treated as if they were
+        single-frame videos in the main pipeline.
+      </li>
+      <li>
+        <b>Pre-allocation of system resources</b>&mdash;The GPU pipeline requires a relatively
+        significant amount of memory in a variety of buffers to operate; these buffers are all
+        allocated in advance of the main pipeline to allow them to be reused multiple times for
+        video processing
+      </li>
+      <li>
+        <b>Generating a distribution</b>&mdash;Using image intensity, detected edges, historical
+        positions of points (in the context of video processing), and user-defined weights for the
+        relative importance of each of these terms, a two-dimensional distribution is generated to
+        control the likelihood of given pixels in the image being sampled as points for use in
+        the generated image.
+      </li>
+      <li>
+        <b>Sampling points</b>&mdash;Based on a user-defined parameter for the number of points to
+        be sampled relative to the resolution of the image, points are drawn from the distribution
+        created in the previous step. Sampling is done by generating two random values in the range
+        [0, 1), one of which is used to select the row in the image in which the point will be
+        placed, the other of which determines the point location within that row.
+      </li>
+      <li>
+        <b>Point tesselation</b>&mdash;Points are tesselated using a simplified version of the
+        algorithm discussed in <a href="http://www.comp.nus.edu.sg/~tants/delaunay2DDownload.html">
+        this</a> paper. In particulat, all of the code for transformation to and from discretized
+        space has been excluded (as the sampled points are already discrete values), and the final
+        steps to convert the solved tesselation to a geometrically correct Delaunay Triangulation
+        have been omitted as well: solving for a geometrically perfect minimal triangulation is
+        unnecessary in this context, so these steps have been skipped to reduce the amount of
+        processing overhead.
+        </a>
+      </li>
+      <li>
+        <b>Drawing the generated image</b>&mdash;<b>TODO</b>
+      </li>
+      <li>
+        <b>Releasing of system resources</b>&mdash;At the end of the pipeline, all of the buffers
+        allocated on both the host and device are cleanly released after copying the relevant
+        results off of the GPU.
+      </li>
+      <li>
+        <b>Displaying/saving results</b>&mdash;Once the pipeline has finished its processing, the
+        finished image or video is shown to the user and saved to disk (using either a user-defined
+        or automatically generated filename).
+      </li>
+    </ol>
+  </p>
+
+  <hr>
+
+
+  <!-- IMPLEMENTATION -->
+  <h3>Implementation</h3>
+  <p>
+    All code for the project can be found in my repository <a
+    href="https://github.com/bionicOnion/CSE555/tree/master/ImageWeb">here</a>.
+  </p>
+
+  <hr>
+
+
+  <!-- RESULTS -->
+  <h3>Results</h3>
+  <p>
+    <b>TODO</b>
+  </p>
+
+  <hr>
+
+
+  <!-- BENCHMARKING -->
+  <h3>Benchmarking</h3>
+  <p>
+    Due to the theoretically 'fast' GPGPU implementation of the pipeline described above, I was
+    interested to see exactly how fast the application was in practice. As such, I included some
+    timing checkpoints (enabled with the flag '-t/--timing') to precisely measure elapsed time
+    in the GPU pipeline (as well as an overall timer for the end-to-end performance of the system).
+    All of the numbers in this section represent a near-worst case scenario for this project: in
+    addition to the code in question being only moderately optimized, the system used for testing is
+    built out of aging components, and the perfomance reported here would likely pale in comparison
+    to the same code running on newer and higher-end cards such as the GTX 980 Ti or the recently
+    announced GTX 1080.
+    <br><br>
+    That said, the numbers below are still useful as an indication of the relative performance of
+    each element of the system and may be useful for drawing conclusions about the viability of
+    real-time video processing or targets for optimization work (in addition to providing a basic
+    frame of reference for the timing performance of the system).
+    <br><br>
+    The full specifications of the benchmarking system are as follows:
+    <ul>
+      <li>CPU: Intel Core i7 3770k @ 3.2 GHz</li>
+      <li>GPU: Geforce GTX 670 @ 915 MHz with 2 GB VRAM</li>
+      <li>RAM: 16 GB DDR3 @ 2133 MHz</li>
+    </ul>
+    <b>TODO</b>
+  </p>
+
+  <hr>
+
+
+  <!-- PARAMETERIZATION -->
+  <h3>Effects of Parameters</h3>
+  <p>
+    Vary edge to intensity weighting
+    Vary point ratio
+    Vary historicity ratio
+    Demonstrate a variety of coloring modes
+  </p>
+
+  <hr>
+
+
+  <!-- CHALLENGES -->
+  <h3>Challenges Faced</h3>
+  <p>
+    This is now the second project that I have implemented with GPGPU technology (the first being
+    the Prokudin-Gorskii image alignment and recoloring project with which the semester began,
+    described <a href="http://bioniconion.github.io/CSE555/ProkudinGorskii/">here</a>); as such, I
+    came into this project with some hard-won development experience from my first outing. However,
+    GPGPU development is radically different from traditional CPU-based development (which is where
+    the bulk of my experience lies), and my prior experience can in no way be considered to apporach
+    expertise. As such, the bulk of the issues that I faced in development stemmed from the inherent
+    challenges of working in an unfamiliar environment, especially one as foreign and difficult to
+    debug as the GPU.
+    <br><br>
+    The first of these overarching problems was the difficulty of adapting to massively-parallel
+    algorithm design. This was one of the main reasons that I sought out an existing solution for
+    computing a prefix-sum when calculating the distribution; developing my own implementation which
+    was robust enough to stand up to a variety of input types would have eaten up a significant
+    amount of development and debugging time which would be only tangentially related to the stated
+    goals of the project.
+    <br><br>
+    A second major issue which arose on multiple occasions was the difficulty of maintaining a
+    consistent view of memory throughout the execution of a CUDA kernel. Although these kernels
+    logically execute in parallel and some synchronization primitives have been provided (such as
+    the life-savingly useful <code>__syncthreads()</code> function), synchronization can only be
+    easily achieved between threads within a given block&mdash;and with potentially hundreds of
+    blocks running at the mercy of the GPU's scheduler, guaranteeing the ordering of memory accesses
+    is extremely difficult, and I found myself running up against bugs on multiple occasions. This is
+    in no small part why my implementation has such a large memory footprint on the GPU: the easiest
+    way to ensure that memory is consistent is to seperate input and output buffers. Although it
+    might be possible to reduce this footprint through more clever reuse of working buffers or more
+    advanced synchronization tools, I ultimately didn't think that it was worth focusing on those
+    elements of the pipeline (as it's far more important to have a working system than to have a
+    beautifully efficient&mdash;but incomplete&mdash;system).
+    <br><br>
+    One of the other issues which caught me by surprise was the amount of overhead associated with
+    the <code>curand_init()</code> function if not used carefully. When I first attempted to use
+    cuRAND, I caused my computer to crash multiple times due to the GPU becoming unresponsive while
+    it attempted to set up the random number generator (with one of the crashes being severe enough
+    that I was afraid that I had done lasting damage to my GPU). Much like developing in
+    kernelspace, GPGPU development operates in a high-risk environment without all of the usual
+    safety and liveness features guaranteed in a standard userspace application. Although the OS
+    and the GPU driver do their best to ensure memory safety and other such features, it's still
+    ultimately easier to write dangerously broken code on the GPU.
+  </p>
+
+  <hr>
+
+
+  <!-- FUTURE WORK -->
+  <h3>Future Work</h3>
+  <p>
+    Although this project is ostensibly complete (inasmuch as it is a project for a course which is
+    now ending), a significant amount of further development could be&mdash;and potentially will
+    be&mdash;done to improve the application. The following list are some of many future avenues for
+    future improvement which might make for interesting projects:
+
+    <h4>Using Image Pyramids in Edge Detection</h4>
+    <b>TODO</b>
+
+    <h4>Custom Prefix-Sum Calculator</h4>
+    <b>TODO</b>
+
+    <h4>Optimized Memory Access Patterns</h4>
+    <b>TODO</b>
+
+    <h4>Expanded Coloring &amp; Tesselation Modes</h4>
+    <b>TODO</b>
+
+    <h4>Improved Image &amp; Video Code</h4>
+    <b>TODO</b>
+
+    <h4>Porting from CUDA to OpenCL</h4>
+    <b>TODO</b>
+
+    <h4>Refactoring to Support Real-Time Images &amp; Video</h4>
+    <b>TODO</b>
+  </p>
+
+
+</body>
