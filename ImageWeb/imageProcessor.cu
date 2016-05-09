@@ -3,15 +3,22 @@
  */
 
 
-#include <ctime>
 #include <math.h>
+#include <windows.h>
+
+// OpenGL
+#include <GL\glew.h>
+#include <GL\GL.h>
+#include <GL\glut.h>
 
 // CUDA
 #include <cuda_runtime.h>
+#include <cuda_gl_interop.h>
 #include <curand_kernel.h>
 #include "scan.cu"
 
 #include "constants.hpp"
+#include "glShaders.h"
 #include "imageProcessor.hpp"
 #include "util.hpp"
 
@@ -24,7 +31,7 @@ __global__ void detectEdges(ChannelBuf intensities, ChannelBuf edges, short2 dim
 __global__ void blendDistributionData(ChannelBuf intensity, ChannelBuf edges,
     ChannelBuf historicity, float* distribution, short2 dims, float intEdgeWeight,
     float historicityWeight);
-void generateCDF(float* distribution, float* distrRows, float* distrCols,
+ReturnCode generateCDF(float* distribution, float* distrRows, float* distrCols,
     float* dev_distrRowSums, short2 dims, dim3 blockSize, dim3 threadSize);
 __global__ void copyRowSums(float* distrRows, float* distrRowSums, short2 dims);
 __global__ void normalizeCDF(float* distrRows, float* distrRowSums, float* distrCols, short2 dims);
@@ -32,25 +39,132 @@ __global__ void normalizeCDF(float* distrRows, float* distrRowSums, float* distr
 __device__ uint16_t binarySearch(float* arr, short2 dims, uint32_t minIndex, uint32_t maxIndex,
 	float target);
 __global__ void samplePoints(float* rowDist, float* colDist, short2 dims,
-    curandState_t* randStates, short2* pointBuf, uint32_t numPoints, ChannelBuf historicityBuf);
+	curandState_t* randStates, Point* pointBuf, uint32_t numPoints, ChannelBuf historicityBuf);
 
 
-__global__ void genDebugImg(Image img, short2* points, short2 dims, uint32_t numPoints);
+__global__ void genDebugImg(Image img, Point* points, short2 dims, uint32_t numPoints);
 
 
 ReturnCode processImageResource(ImageResource& input, ImageResource& output, ParamBundle params)
 {
+	ReturnCode retCode;
     cudaError_t cudaRetCode;
+	GLenum glRetCode = GL_NO_ERROR;
+	int cudaDeviceHandle;
 
-    // Prepare relevant state
-    auto dims = make_short2(input.getWidth(), input.getHeight());
-    uint32_t imgBufSize = dims.x * dims.y;
-    uint32_t numPoints = static_cast<uint32_t>(imgBufSize * params.pointRatio);
-	uint32_t numTriangles = numPoints + 1; // TODO Figure out what this actually needs to be
-    dim3 blockSize(dims.x / THREADS_PER_BLOCK, dims.y / THREADS_PER_BLOCK);
+	// Prepare relevant state
+	auto dims = make_short2(input.getWidth(), input.getHeight());
+	uint32_t imgBufSize = dims.x * dims.y;
+	uint32_t numPoints = static_cast<uint32_t>(imgBufSize * params.pointRatio);
+	uint32_t numTriangles = 2 * numPoints;
+	dim3 blockSize(dims.x / THREADS_PER_BLOCK, dims.y / THREADS_PER_BLOCK);
 	auto pointDim = static_cast<uint32_t>(sqrt(numPoints / THREADS_PER_BLOCK / THREADS_PER_BLOCK));
 	dim3 blockSizePoints(pointDim, pointDim);
-    dim3 threadSize(THREADS_PER_BLOCK, THREADS_PER_BLOCK);
+	dim3 threadSize(THREADS_PER_BLOCK, THREADS_PER_BLOCK);
+
+	// Ensure that a CUDA device with compute level 2.0 or greater is available
+	cudaDeviceProp prop;
+	prop.major = 2;
+	prop.minor = 0;
+	CUDA_CALL(cudaChooseDevice(&cudaDeviceHandle, &prop));
+	CUDA_CALL(cudaSetDevice(cudaDeviceHandle));
+
+	// Set up OpenGL with CUDA interoperability
+	int argc = 1;
+	char* argv = "";
+	glutInit(&argc, &argv);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
+	glutInitWindowSize(1, 1);
+	auto glutWindow = glutCreateWindow("Context Window");
+	glutHideWindow();
+	CUDA_CALL(cudaGLSetGLDevice(cudaDeviceHandle));
+	glewInit();
+
+	// Set up assorted OpenGL state
+	const GLfloat background[] = { params.background.r / 255.0f, params.background.g / 255.0f,
+		params.background.b / 255.0f, 1.0f };
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glDisable(GL_DEPTH_TEST);
+	glEnable(GL_TEXTURE_2D);
+	glRetCode = glGetError();
+	if (glRetCode != GL_NO_ERROR)
+		return PRINT_ERR_MSG_GL(glRetCode);
+
+	// Compile and install the shaders for use with OpenGL
+	GLuint vertShader, fragShader, glProgram;
+	GLint compileStatus;
+	vertShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertShader, 1, vertexShaderSource, NULL);
+	glCompileShader(vertShader);
+	glGetShaderiv(vertShader, GL_COMPILE_STATUS, &compileStatus);
+	if (compileStatus != GL_TRUE)
+		return PRINT_ERR_MSG(GL_COMPILE_ERROR);
+	fragShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragShader, 1, fragmentShaderSource, NULL);
+	glCompileShader(fragShader);
+	glGetShaderiv(fragShader, GL_COMPILE_STATUS, &compileStatus);
+	if (compileStatus != GL_TRUE)
+		return PRINT_ERR_MSG(GL_COMPILE_ERROR);
+	glProgram = glCreateProgram();
+	glAttachShader(glProgram, vertShader);
+	glAttachShader(glProgram, fragShader);
+	glLinkProgram(glProgram);
+	glValidateProgram(glProgram);
+	GLint linkStatus, validateStatus;
+	glGetProgramiv(glProgram, GL_LINK_STATUS, &linkStatus);
+	glGetProgramiv(glProgram, GL_VALIDATE_STATUS, &validateStatus);
+	if (linkStatus != GL_TRUE)
+		return PRINT_ERR_MSG(GL_LINK_ERROR);
+	if (validateStatus != GL_TRUE)
+		return PRINT_ERR_MSG(GL_VALIDATE_ERROR);
+	glDeleteShader(vertShader);
+	glDeleteShader(fragShader);
+	glRetCode = glGetError();
+	if (glRetCode != GL_NO_ERROR)
+		return PRINT_ERR_MSG_GL(glRetCode);
+
+	// Generate a framebuffer for OpenGL to draw to
+	GLuint dev_texture, dev_frameBuf;
+	glGenTextures(1, &dev_texture);
+	glBindTexture(GL_TEXTURE_2D, dev_texture);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, dims.x, dims.y, 0, GL_RGB, GL_UNSIGNED_INT, NULL);
+	glGenFramebuffers(1, &dev_frameBuf);
+	glBindFramebuffer(GL_FRAMEBUFFER, dev_frameBuf);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, dev_texture, 0);
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		return PRINT_ERR_MSG_GL(glGetError());
+	glRetCode = glGetError();
+	if (glRetCode != GL_NO_ERROR)
+		return PRINT_ERR_MSG_GL(glRetCode);
+
+	// Generate a vertex array object for OpenGL to use (with data sourced from CUDA)
+	GLuint dev_vao, dev_vertexBuffer;
+	glCreateVertexArrays(1, &dev_vao);
+	glBindVertexArray(dev_vao);
+	glGenBuffers(1, &dev_vertexBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, dev_vertexBuffer);
+	glNamedBufferStorage(dev_vertexBuffer, numTriangles * sizeof(Triangle), NULL, 0);
+	glRetCode = glGetError();
+	if (glRetCode != GL_NO_ERROR)
+		return PRINT_ERR_MSG_GL(glRetCode);
+	glVertexArrayAttribBinding(dev_vao, 0, 0);
+	glVertexArrayAttribFormat(dev_vao, 0, 2, GL_UNSIGNED_SHORT, GL_FALSE, offsetof(Point, x));
+	glEnableVertexArrayAttrib(dev_vao, 0);
+	glVertexArrayAttribBinding(dev_vao, 1, 0);
+	glVertexArrayAttribFormat(dev_vao, 1, 3, GL_UNSIGNED_BYTE, GL_FALSE, offsetof(Point, color));
+	glEnableVertexArrayAttrib(dev_vao, 1);
+	glVertexArrayVertexBuffer(dev_vao, 0, dev_vertexBuffer, 0, sizeof(Point));
+	glRetCode = glGetError();
+	if (glRetCode != GL_NO_ERROR)
+		return PRINT_ERR_MSG_GL(glRetCode);
+
+	if (params.debug)
+	{
+		cudaGetDeviceProperties(&prop, cudaDeviceHandle);
+		printDeviceData(prop);
+	}
 
     // Allocate memory
     Image dev_imgBuf;
@@ -59,8 +173,7 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 	float* dev_distrRows;
     float* dev_distrRowSums;
     float* dev_distrCols;
-    short2* dev_pointBuf;
-	short2* dev_triangleBuf;
+	Point* dev_pointBuf;
     curandState_t* dev_curandStates;
     CUDA_CALL(cudaMalloc(&dev_imgBuf, imgBufSize * sizeof(Pixel)));
     CUDA_CALL(cudaMalloc(&dev_intensities, imgBufSize * sizeof(channel_t)));
@@ -70,17 +183,17 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 	CUDA_CALL(cudaMalloc(&dev_distrRows, imgBufSize * sizeof(float)));
     CUDA_CALL(cudaMalloc(&dev_distrRowSums, dims.y * sizeof(float)));
     CUDA_CALL(cudaMalloc(&dev_distrCols, dims.y * sizeof(float)));
-	CUDA_CALL(cudaMalloc(&dev_pointBuf, numPoints * sizeof(short2)));
-	CUDA_CALL(cudaMalloc(&dev_triangleBuf, numTriangles * sizeof(short2) * 3));
+	CUDA_CALL(cudaMalloc(&dev_pointBuf, numPoints * sizeof(Point)));
 	CUDA_CALL(cudaMalloc(&dev_curandStates, numPoints * sizeof(curandState_t)));
     auto host_imgBuf = reinterpret_cast<Image>(malloc(imgBufSize * sizeof(Pixel)));
-	preallocBlockSums(imgBufSize);
+	retCode = preallocBlockSums(imgBufSize);
+	if (retCode != SUCCESS)
+		return retCode;
 
     CUDA_CALL(cudaMemset(dev_pointHistoricity, 0, imgBufSize * sizeof(channel_t)));
 
     // Initialize state for cuRAND
-	// cuRAND_init<<<blockSizePoints, threadSize>>>(dev_curandStates, params.debug ? 0 : time(NULL));
-	cuRAND_init<<<blockSizePoints, threadSize>>>(dev_curandStates, time(NULL));
+	cuRAND_init<<<blockSizePoints, threadSize>>>(dev_curandStates, params.seed);
 
     // Create events to be used if debugging is enabled
     cudaEvent_t start, distrGenerated, pointsSampled, pointsTesselated, end;
@@ -112,9 +225,11 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
         blendDistributionData<<<blockSize, threadSize>>>(dev_intensities, dev_edges,
             dev_pointHistoricity, dev_distr, dims, params.intensityEdgeWeight,
             params.historicityWeight);
-		generateCDF(dev_distr, dev_distrRows, dev_distrCols, dev_distrRowSums, dims,
+		retCode = generateCDF(dev_distr, dev_distrRows, dev_distrCols, dev_distrRowSums, dims,
 			blockSize, threadSize);
-        
+		if (retCode != SUCCESS)
+			return retCode;
+
         if (params.timing)
             CUDA_CALL(cudaEventRecord(distrGenerated, 0));
 		if (params.debug)
@@ -135,12 +250,19 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 
         // Perform tesselation of points
         //   Follow the paper linked to in the project proposal
+		//   Also assign point colors based on the current coloring mode
         
         if (params.timing)
             CUDA_CALL(cudaEventRecord(pointsTesselated, 0));
 
-        // Call out to OpenGL to generate the final image; store it in dev_imgBuf
-        //   TODO
+        // Call out to OpenGL to generate the final image
+		glBindFramebuffer(GL_FRAMEBUFFER, dev_frameBuf);
+		glClearNamedFramebufferfv(dev_frameBuf, GL_COLOR, 0, background);
+		glUseProgram(glProgram);
+		glDrawArrays(GL_POINTS, 0, numTriangles * 3);
+		glRetCode = glGetError();
+		if (glRetCode != GL_NO_ERROR)
+			return PRINT_ERR_MSG_GL(glRetCode);
         
         if (params.timing)
         {
@@ -149,13 +271,25 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
         }
 
         // Copy the resulting frame back to the CPU
-        CUDA_CALL(cudaMemcpy(host_imgBuf, dev_imgBuf, imgBufSize * sizeof(Pixel), cudaMemcpyDeviceToHost));
+		glReadBuffer(GL_COLOR_ATTACHMENT0);
+		glReadPixels(0, 0, dims.x, dims.y, GL_BGR, GL_UNSIGNED_BYTE, host_imgBuf);
         output.addFrame(host_imgBuf, dims.x, dims.y);
-        if (params.timing)
-            printTimings(start, distrGenerated, pointsSampled, pointsTesselated, end, i);
+
+		if (params.timing)
+		{
+			retCode = printTimings(start, distrGenerated, pointsSampled, pointsTesselated, end, i);
+			if (retCode != SUCCESS)
+				return retCode;
+		}
     }
 
-    // Free memory
+    // Release resources
+	glDeleteProgram(glProgram);
+	glDeleteVertexArrays(1, &dev_vao);
+	glDeleteBuffers(1, &dev_vertexBuffer);
+	glDeleteFramebuffers(1, &dev_frameBuf);
+	glDeleteTextures(1, &dev_texture);
+	glutDestroyWindow(glutWindow);
     free(host_imgBuf);
     CUDA_CALL(cudaFree(dev_imgBuf));
     CUDA_CALL(cudaFree(dev_intensities));
@@ -166,17 +300,15 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
     CUDA_CALL(cudaFree(dev_distrRowSums));
     CUDA_CALL(cudaFree(dev_distrCols));
     CUDA_CALL(cudaFree(dev_pointBuf));
-	CUDA_CALL(cudaFree(dev_triangleBuf));
     CUDA_CALL(cudaFree(dev_curandStates));
 	deallocBlockSums();
 
-    return NOT_YET_IMPLEMENTED;
+    return SUCCESS;
 }
 
 
 __global__ void cuRAND_init(curandState_t* states, uint64_t seed)
 {
-    // The x and y coordinates for which this instance of the kernel is responsible
 	short x = threadIdx.x + blockIdx.x * blockDim.x;
 	short y = threadIdx.y + blockIdx.y * blockDim.y;
 	uint32_t offset = x + (y * (gridDim.x * blockDim.x));
@@ -191,7 +323,6 @@ __global__ void cuRAND_init(curandState_t* states, uint64_t seed)
 
 __global__ void computePixelIntensities(Image img, ChannelBuf intensities, short2 dims)
 {
-    // The x and y coordinates for which this instance of the kernel is responsible
     short x = threadIdx.x + blockIdx.x * blockDim.x;
     short y = threadIdx.y + blockIdx.y * blockDim.y;
     uint32_t offset = x + (y * dims.x);
@@ -212,7 +343,6 @@ __global__ void detectEdges(ChannelBuf intensities, ChannelBuf edges, short2 dim
         {  0.000f,  0.333f,  0.333f },
     };
 
-    // The x and y coordinates for which this instance of the kernel is responsible
     short x = threadIdx.x + (blockIdx.x * blockDim.x);
     short y = threadIdx.y + (blockIdx.y * blockDim.y);
     unsigned int offset = x + (y * dims.x);
@@ -241,7 +371,6 @@ __global__ void blendDistributionData(ChannelBuf intensity, ChannelBuf edges,
     ChannelBuf historicity, float* distribution, short2 dims, float intEdgeWeight,
     float historicityWeight)
 {
-    // The x and y coordinates for which this instance of the kernel is responsible
     short x = threadIdx.x + blockIdx.x * blockDim.x;
     short y = threadIdx.y + blockIdx.y * blockDim.y;
     uint32_t offset = x + (y * dims.x);
@@ -256,7 +385,7 @@ __global__ void blendDistributionData(ChannelBuf intensity, ChannelBuf edges,
 }
 
 
-void generateCDF(float* distribution, float* distrRows, float* distrCols,
+ReturnCode generateCDF(float* distribution, float* distrRows, float* distrCols,
     float* distrRowSums, short2 dims, dim3 blockSize, dim3 threadSize)
 {
 	cudaError_t cudaRetCode;
@@ -268,36 +397,32 @@ void generateCDF(float* distribution, float* distrRows, float* distrCols,
     normalizeCDF<<<blockSize, threadSize>>>(distrRows, distrRowSums, distrCols, dims);
 	float one = 1;
 	CUDA_CALL(cudaMemcpy(distrCols + dims.y - 1, &one, sizeof(one), cudaMemcpyHostToDevice));
+	
+	return SUCCESS;
 }
 
 
 __global__ void copyRowSums(float* distrRows, float* distrRowSums, short2 dims)
 {
-    // The x and y coordinates for which this instance of the kernel is responsible
     short x = threadIdx.x + blockIdx.x * blockDim.x;
     short y = threadIdx.y + blockIdx.y * blockDim.y;
     uint32_t offset = x + (y * dims.x);
     if (offset > dims.x*dims.y || x != dims.x - 1)
         return;
 
-    // Copy the maximum values of each row
     distrRowSums[y] = distrRows[offset];
 }
 
 
 __global__ void normalizeCDF(float* distrRows, float* distrRowSums, float* distrCols, short2 dims)
 {
-    // The x and y coordinates for which this instance of the kernel is responsible
     short x = threadIdx.x + blockIdx.x * blockDim.x;
     short y = threadIdx.y + blockIdx.y * blockDim.y;
     uint32_t offset = x + (y * dims.x);
     if (offset > dims.x*dims.y)
         return;
 
-    // Normalize distrRows
     distrRows[offset] /= distrRowSums[y];
-
-    // Normalize distrCols
     if (offset < dims.y - 1)
         distrCols[offset] /= distrCols[dims.y - 1];
 }
@@ -316,9 +441,8 @@ __device__ uint16_t binarySearch(float* arr, size_t arrSize, uint32_t minIndex, 
 
 
 __global__ void samplePoints(float* rowDist, float* colDist, short2 dims,
-    curandState_t* randStates, short2* pointBuf, uint32_t numPoints, ChannelBuf historicityBuf)
+    curandState_t* randStates, Point* pointBuf, uint32_t numPoints, ChannelBuf historicityBuf)
 {
-    // The x and y coordinates for which this instance of the kernel is responsible
 	short x = threadIdx.x + blockIdx.x * blockDim.x;
 	short y = threadIdx.y + blockIdx.y * blockDim.y;
 	uint32_t offset = x + (y * (gridDim.x * blockDim.x));
@@ -331,20 +455,17 @@ __global__ void samplePoints(float* rowDist, float* colDist, short2 dims,
     randStates[offset] = state;
 
     // Perform binary searches to find the corresponding index in the distribution
-	auto yVal = binarySearch(colDist, dims.y, 0, dims.y, randY);
-	auto xVal = binarySearch(rowDist + (yVal * dims.x), dims.x, 0, dims.x, randX);
-
-    // Convert the computed index into a point value
-	pointBuf[offset] = make_short2(xVal, yVal);
+	pointBuf[offset].y = binarySearch(colDist, dims.y, 0, dims.y, randY);
+	pointBuf[offset].x = binarySearch(rowDist + (pointBuf[offset].y * dims.x), dims.x, 0, dims.x,
+		randX);
 
     // 'Paint' the selected point into historicityBuf with atomicAdd
     // TODO
 }
 
 
-__global__ void genDebugImg(Image img, short2* points, short2 dims, uint32_t numPoints)
+__global__ void genDebugImg(Image img, Point* points, short2 dims, uint32_t numPoints)
 {
-	// The x and y coordinates for which this instance of the kernel is responsible
 	short x = threadIdx.x + blockIdx.x * blockDim.x;
 	short y = threadIdx.y + blockIdx.y * blockDim.y;
 	uint32_t offset = x + (y * dims.x);

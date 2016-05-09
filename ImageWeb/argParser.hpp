@@ -31,6 +31,7 @@ const std::unordered_set<std::string> IMAGE_FILE_ARGS { "-i", "--image" };
 const std::unordered_set<std::string> INTENSITY_EDGE_WEIGHT_ARGS{ "-w", "--weightRatio" };
 const std::unordered_set<std::string> OUTPUT_FILE_ARGS{ "-o", "--outputFile" };
 const std::unordered_set<std::string> POINT_RATIO_ARGS{ "-r", "--pointRatio" };
+const std::unordered_set<std::string> SEED_ARGS { "-s", "--seed" };
 const std::unordered_set<std::string> TIMING_ARGS{ "-t", "--time" };
 const std::unordered_set<std::string> VIDEO_FILE_ARGS { "-v", "--video" };
 

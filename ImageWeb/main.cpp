@@ -1,19 +1,16 @@
 /*
  * main.cpp
  * Author: Robert Miller
- * Last Edited: 4/27/16
+ * Last Edited: 5/9/16
  *
  * TODO
  */
 
 
-#include <iostream>
-
 #include "argParser.hpp"
 #include "imageProcessor.hpp"
 #include "imageResource.hpp"
 #include "types.hpp"
-#include "util.hpp"
 
 
 int main(int argc, char** argv)
@@ -24,7 +21,7 @@ int main(int argc, char** argv)
     ParamBundle params;
     retCode = parseArguments(&params, argc, argv);
     if (retCode != SUCCESS)
-        return PRINT_ERR_MSG(retCode);
+        return retCode;
 
 	if (params.debug)
 		printParams(&params);
@@ -33,19 +30,19 @@ int main(int argc, char** argv)
     ImageResource input(params.inputType);
     retCode = input.load(params.inputFile);
     if (retCode != SUCCESS)
-        return PRINT_ERR_MSG(retCode);
+        return retCode;
 
     // Perform processing on the input image/video
     ImageResource output(params.inputType);
     retCode = processImageResource(input, output, params);
     if (retCode != SUCCESS)
-        return PRINT_ERR_MSG(retCode);
+        return retCode;
 
     // Display and save the output
     output.display();
     retCode = output.save(params.outputFile);
     if (retCode != SUCCESS)
-        return PRINT_ERR_MSG(retCode);
+        return retCode;
 
     return SUCCESS;
 }

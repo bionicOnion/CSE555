@@ -45,7 +45,7 @@ float** g_scanBlockSums;
 unsigned int g_numEltsAllocated = 0;
 unsigned int g_numLevelsAllocated = 0;
 
-void preallocBlockSums(unsigned int maxNumElements)
+ReturnCode preallocBlockSums(unsigned int maxNumElements)
 {
 	cudaError_t cudaRetCode;
 
@@ -86,6 +86,8 @@ void preallocBlockSums(unsigned int maxNumElements)
         }
         numElts = numBlocks;
     } while (numElts > 1);
+
+	return SUCCESS;
 }
 
 void deallocBlockSums()

@@ -23,6 +23,23 @@ typedef Pixel* Image;
 typedef channel_t* ChannelBuf;
 
 
+// Triangulation data types
+typedef struct
+{
+	uint16_t x;
+	uint16_t y;
+
+	Color color;
+} Point;
+
+typedef struct
+{
+	Point p1;
+	Point p2;
+	Point p3;
+} Triangle;
+
+
 // Parameter types
 enum class ColoringMode
 {
@@ -54,6 +71,8 @@ typedef struct
 
 	bool debug;
 	bool timing;
+
+	uint64_t seed;
 } ParamBundle;
 
 
@@ -79,6 +98,12 @@ enum ReturnCode : uint16_t
 
 	// CUDA
 	CUDA_ERROR,
+
+	// OpenGL
+	GL_ERROR,
+	GL_COMPILE_ERROR,
+	GL_LINK_ERROR,
+	GL_VALIDATE_ERROR,
 
 	// Development
 	NOT_YET_IMPLEMENTED,

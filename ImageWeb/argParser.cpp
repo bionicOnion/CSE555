@@ -3,6 +3,7 @@
  */
 
 
+#include <ctime>
 #include <iostream>
 #include <sstream>
 
@@ -30,6 +31,7 @@ ReturnCode parseArguments(ParamBundle* params, int argc, char** argv)
 	params->inputType = InputType::Unset;
 	params->debug = false;
 	params->timing = false;
+	params->seed = time(nullptr);
 
     // Insert provided values into the parameter bundle
     retCode = parse(params, argc, argv);
@@ -52,19 +54,19 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
         if (BACKGROUND_COLOR_ARGS.find(argv[i]) != BACKGROUND_COLOR_ARGS.end())
         {
 			if (++i >= argc)
-				return INSUFFICIENT_ARGS;
+				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
 			params->background.r = std::stoi(argv[i]);
 			if (++i >= argc)
-				return INSUFFICIENT_ARGS;
+				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
 			params->background.g = std::stoi(argv[i]);
 			if (++i >= argc)
-				return INSUFFICIENT_ARGS;
+				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
 			params->background.b = std::stoi(argv[i]);
         }
         else if (COLORING_MODE_ARGS.find(argv[i]) != COLORING_MODE_ARGS.end())
         {
-            if (++i >= argc)
-                return INSUFFICIENT_ARGS;
+			if (++i >= argc)
+				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
 
             if (AVERAGE_COLORING_MODE.find(argv[i]) != AVERAGE_COLORING_MODE.end())
                 params->mode = ColoringMode::AverageColor;
@@ -72,8 +74,8 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
                 params->mode = ColoringMode::PixelColors;
             else if (SOLID_COLORING_MODE.find(argv[i]) != SOLID_COLORING_MODE.end())
                 params->mode = ColoringMode::SolidColors;
-            else
-                return UNRECOGNIZED_COLORING_MODE;
+			else
+				return PRINT_ERR_MSG(UNRECOGNIZED_COLORING_MODE);
         }
 		else if (DEBUG_MODE_ARGS.find(argv[i]) != DEBUG_MODE_ARGS.end())
 		{
@@ -82,25 +84,25 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
         else if (FOREGROUND_COLOR_ARGS.find(argv[i]) != FOREGROUND_COLOR_ARGS.end())
         {
 			// TODO Handle possible exceptions
-            if (++i >= argc)
-                return INSUFFICIENT_ARGS;
+			if (++i >= argc)
+				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
 			params->foreground.r = std::stoi(argv[i]);
 			if (++i >= argc)
-				return INSUFFICIENT_ARGS;
+				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
 			params->foreground.g = std::stoi(argv[i]);
 			if (++i >= argc)
-				return INSUFFICIENT_ARGS;
+				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
 			params->foreground.b = std::stoi(argv[i]);
         }
         else if (HELP_ARGS.find(argv[i]) != HELP_ARGS.end())
         {
-            printUsage(argv[0]);
-            return USAGE_PRINTED;
+			printUsage(argv[0]);
+			return PRINT_ERR_MSG(USAGE_PRINTED);
         }
         else if (HISTORICITY_ARGS.find(argv[i]) != HISTORICITY_ARGS.end())
         {
-            if (++i >= argc)
-                return INSUFFICIENT_ARGS;
+			if (++i >= argc)
+				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
 
 			try
 			{
@@ -108,7 +110,7 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
 			}
 			catch (std::invalid_argument)
 			{
-				return INVALID_ARGUMENT;
+				return PRINT_ERR_MSG(INVALID_ARGUMENT);
 			}
 			catch (std::out_of_range)
 			{
@@ -117,18 +119,18 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
         }
         else if (IMAGE_FILE_ARGS.find(argv[i]) != IMAGE_FILE_ARGS.end())
         {
-            if (params->inputType != InputType::Unset)
-                return TOO_MANY_INPUT_FILES;
-            if (++i >= argc)
-                return INSUFFICIENT_ARGS;
+			if (params->inputType != InputType::Unset)
+				return PRINT_ERR_MSG(TOO_MANY_INPUT_FILES);
+			if (++i >= argc)
+				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
 
             params->inputType = InputType::Image;
             params->inputFile = argv[i];
         }
         else if (INTENSITY_EDGE_WEIGHT_ARGS.find(argv[i]) != INTENSITY_EDGE_WEIGHT_ARGS.end())
         {
-            if (++i >= argc)
-                return INSUFFICIENT_ARGS;
+			if (++i >= argc)
+				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
 
 			try
 			{
@@ -136,7 +138,7 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
 			}
 			catch (std::invalid_argument)
 			{
-				return INVALID_ARGUMENT;
+				return PRINT_ERR_MSG(INVALID_ARGUMENT);
 			}
 			catch (std::out_of_range)
 			{
@@ -146,14 +148,14 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
 		else if (OUTPUT_FILE_ARGS.find(argv[i]) != OUTPUT_FILE_ARGS.end())
 		{
 			if (++i >= argc)
-				return INSUFFICIENT_ARGS;
+				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
 
 			params->outputFile = argv[i];
 		}
         else if (POINT_RATIO_ARGS.find(argv[i]) != POINT_RATIO_ARGS.end())
         {
-            if (++i >= argc)
-                return INSUFFICIENT_ARGS;
+			if (++i >= argc)
+				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
 
 			try
 			{
@@ -161,31 +163,49 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
 			}
 			catch (std::invalid_argument)
 			{
-				return INVALID_ARGUMENT;
+				return PRINT_ERR_MSG(INVALID_ARGUMENT);
 			}
 			catch (std::out_of_range)
 			{
 				params->pointRatio = 1;
 			}
-        }
+		}
+		else if (SEED_ARGS.find(argv[i]) != SEED_ARGS.end())
+		{
+			if (++i >= argc)
+				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
+
+			try
+			{
+				params->seed = std::stol(argv[i]);
+			}
+			catch (std::invalid_argument)
+			{
+				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
+			}
+			catch (std::out_of_range)
+			{
+				params->seed = 0;
+			}
+		}
 		else if (TIMING_ARGS.find(argv[i]) != TIMING_ARGS.end())
 		{
 			params->timing = true;
 		}
         else if (VIDEO_FILE_ARGS.find(argv[i]) != VIDEO_FILE_ARGS.end())
         {
-            if (params->inputType != InputType::Unset)
-                return TOO_MANY_INPUT_FILES;
-            if (++i >= argc)
-                return INSUFFICIENT_ARGS;
+			if (params->inputType != InputType::Unset)
+				return PRINT_ERR_MSG(TOO_MANY_INPUT_FILES);
+			if (++i >= argc)
+				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
 
             params->inputType = InputType::Video;
             params->inputFile = argv[i];
         }
         else
         {
-            std::cout << "The argument " << argv[i] << " was not recognized" << std::endl;
-            return UNRECOGNIZED_ARG;
+			std::cout << "The argument " << argv[i] << " was not recognized" << std::endl;
+			return PRINT_ERR_MSG(UNRECOGNIZED_ARG);
         }
     }
 
@@ -196,13 +216,13 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
 ReturnCode validate(ParamBundle* params)
 {
 	if (params->pointRatio < 0 || params->pointRatio > 1)
-        return ARG_OUT_OF_BOUNDS;
+		return PRINT_ERR_MSG(ARG_OUT_OF_BOUNDS);
 	if (params->intensityEdgeWeight < 0 || params->intensityEdgeWeight > 1)
-        return ARG_OUT_OF_BOUNDS;
+		return PRINT_ERR_MSG(ARG_OUT_OF_BOUNDS);
 	if (params->historicityWeight < 0 || params->historicityWeight > 1)
-        return ARG_OUT_OF_BOUNDS;
+		return PRINT_ERR_MSG(ARG_OUT_OF_BOUNDS);
 	if (params->inputType == InputType::Unset || params->inputFile == "")
-        return NO_INPUT_FILE;
+		return PRINT_ERR_MSG(NO_INPUT_FILE);
 
 	if (params->outputFile == "")
     {
@@ -213,8 +233,8 @@ ReturnCode validate(ParamBundle* params)
 		std::string token;
 		while (std::getline(iss, token, '.'))
 			inputFileNameVec.push_back(token);
-        if (inputFileNameVec.size() < 2)
-            return INVALID_ARGUMENT;
+		if (inputFileNameVec.size() < 2)
+			return PRINT_ERR_MSG(INVALID_ARGUMENT);
         auto fileExtension = inputFileNameVec[inputFileNameVec.size() - 1];
         auto fileName = inputFileNameVec[inputFileNameVec.size() - 2];
 		auto strCutIndex = 0;
@@ -231,28 +251,30 @@ ReturnCode validate(ParamBundle* params)
 void printUsage(std::string programName)
 {
     std::cout << "Usage:" << std::endl;
-    std::cout << "  " << programName << " [-i img]/[-v video]" << std::endl;
+    std::cout << "  " << programName << " [-i/--image value]/[-v/--video value]" << std::endl;
     std::cout << "Optional Parameters:" << std::endl;
     std::cout << "  Background Color:                [-b/--background r g b]" << std::endl;
     std::cout << "  Coloring Mode:                   [-c/--coloringMode]" << std::endl;
     std::cout << "    [a/avg/average]: Foreground color is average of image color" << std::endl;
     std::cout << "    [p/pix/pixel]: Foreground color is sampled from input image" << std::endl;
     std::cout << "    [s/solid]: Foreground/background colors are user-specified" << std::endl;
-	  std::cout << "  Debug Mode:                      [-d/--debug]" <<std::endl;
-	  std::cout << "  Foreground Color:                [-f/--foreground r g b]" << std::endl;
-	  std::cout << "  Output File:                     [-o/--outputFile filename]" << std::endl;
+	std::cout << "  Debug Mode:                      [-d/--debug]" <<std::endl;
+	std::cout << "  Foreground Color:                [-f/--foreground r g b]" << std::endl;
+	std::cout << "  Output File:                     [-o/--outputFile filename]" << std::endl;
     std::cout << "  Point Location Historicity:      [-h/--historicity value]" << std::endl;
     std::cout << "  Intensity vs. Edges Weight:      [-w/--weightRatio value]" << std::endl;
-	  std::cout << "  Point Count to Resolution Ratio: [-r/--pointRatio value]" << std::endl;
-	  std::cout << "  Record Timings:                  [-t/--time]" << std::endl;
+	std::cout << "  Point Count to Resolution Ratio: [-r/--pointRatio value]" << std::endl;
+	std::cout << "  RNG Seed:                        [-s/--seed value]" << std::endl;
+	std::cout << "  Record Timings:                  [-t/--time]" << std::endl;
 }
 
 
 void printParams(ParamBundle* params)
 {
-	std::cout << "Point ratio:    " << params->pointRatio << std::endl;
-	std::cout << "Intensity/Edge: " << params->intensityEdgeWeight << std::endl;
-	std::cout << "Historicity:    " << params->historicityWeight << std::endl;
+	std::cout << "Parameters:" << std::endl;
+	std::cout << "  Point ratio:    " << params->pointRatio << std::endl;
+	std::cout << "  Intensity/Edge: " << params->intensityEdgeWeight << std::endl;
+	std::cout << "  Historicity:    " << params->historicityWeight << std::endl;
 	std::string mode;
 	if (params->mode == ColoringMode::SolidColors)
 		mode = "Solid Colors";
@@ -260,12 +282,12 @@ void printParams(ParamBundle* params)
 		mode = "Average Color";
 	else
 		mode = "Pixel Color";
-	std::cout << "Coloring Mode:  " << mode << std::endl;
-	std::cout << "Foreground:     ("
+	std::cout << "  Coloring Mode:  " << mode << std::endl;
+	std::cout << "  Foreground:     ("
 		<< static_cast<unsigned>(params->foreground.r) << ", "
 		<< static_cast<unsigned>(params->foreground.g) << ", "
 		<< static_cast<unsigned>(params->foreground.b) << ")" << std::endl;
-	std::cout << "Background:     ("
+	std::cout << "  Background:     ("
 		<< static_cast<unsigned>(params->background.r) << ", "
 		<< static_cast<unsigned>(params->background.g) << ", "
 		<< static_cast<unsigned>(params->background.b) << ")" << std::endl;
@@ -276,7 +298,8 @@ void printParams(ParamBundle* params)
 		inType = "Video";
 	else
 		inType = "Unset";
-	std::cout << "Input type:     " << inType << std::endl;
-	std::cout << "Input file:     " << params->inputFile << std::endl;
-	std::cout << "Output file:    " << params->outputFile << std::endl;
+	std::cout << "  Input type:     " << inType << std::endl;
+	std::cout << "  Input file:     " << params->inputFile << std::endl;
+	std::cout << "  Output file:    " << params->outputFile << std::endl;
+	std::cout << std::endl;
 }

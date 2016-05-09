@@ -12,3 +12,5 @@ const uint16_t MIN_PYRAMID_SIZE = 64;
 const uint8_t MAX_PYRAMID_LEVELS = 5;
 
 const short EDGE_THRESH = 10;
+
+const short MAX_DIM = 640;
