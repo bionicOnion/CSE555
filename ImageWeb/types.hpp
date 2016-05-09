@@ -26,17 +26,17 @@ typedef channel_t* ChannelBuf;
 // Triangulation data types
 typedef struct
 {
-	uint16_t x;
-	uint16_t y;
+    uint16_t x;
+    uint16_t y;
 
-	Color color;
+    Color color;
 } Point;
 
 typedef struct
 {
-	Point p1;
-	Point p2;
-	Point p3;
+    Point p1;
+    Point p2;
+    Point p3;
 } Triangle;
 
 
@@ -69,43 +69,43 @@ typedef struct
     std::string inputFile;
     std::string outputFile;
 
-	bool debug;
-	bool timing;
+    bool debug;
+    bool timing;
 
-	uint64_t seed;
+    uint64_t seed;
 } ParamBundle;
 
 
 // Return codes
 enum ReturnCode : uint16_t
 {
-	SUCCESS = 0,
+    SUCCESS = 0,
 
-	// Argument processing
-	ARG_OUT_OF_BOUNDS,
-	INSUFFICIENT_ARGS,
-	INVALID_ARGUMENT,
-	TOO_MANY_INPUT_FILES,
-	UNRECOGNIZED_ARG,
-	UNRECOGNIZED_COLORING_MODE,
-	USAGE_PRINTED,
-	NO_INPUT_FILE,
+    // Argument processing
+    ARG_OUT_OF_BOUNDS,
+    INSUFFICIENT_ARGS,
+    INVALID_ARGUMENT,
+    TOO_MANY_INPUT_FILES,
+    UNRECOGNIZED_ARG,
+    UNRECOGNIZED_COLORING_MODE,
+    USAGE_PRINTED,
+    NO_INPUT_FILE,
 
-	// File access
-	FILE_NOT_OPENED,
-	FILE_WRITE_ERROR,
-	RESOURCE_UNINITIALIZED,
+    // File access
+    FILE_NOT_OPENED,
+    FILE_WRITE_ERROR,
+    RESOURCE_UNINITIALIZED,
 
-	// CUDA
-	CUDA_ERROR,
+    // CUDA
+    CUDA_ERROR,
 
-	// OpenGL
-	GL_ERROR,
-	GL_COMPILE_ERROR,
-	GL_LINK_ERROR,
-	GL_VALIDATE_ERROR,
+    // OpenGL
+    GL_ERROR,
+    GL_COMPILE_ERROR,
+    GL_LINK_ERROR,
+    GL_VALIDATE_ERROR,
 
-	// Development
-	NOT_YET_IMPLEMENTED,
+    // Development
+    NOT_YET_IMPLEMENTED,
     UNRECOGNIZED_INPUT_TYPE,
 };
