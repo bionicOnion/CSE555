@@ -110,7 +110,7 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
     char* argv = "";
     glutInit(&argc, &argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-    glutInitWindowSize(dims.x, dims.y);
+    glutInitWindowSize(1, 1);
     auto glutWindow = glutCreateWindow("Context Window");
     glutHideWindow();
     glewInit();
@@ -123,6 +123,7 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_STENCIL_TEST);
     glEnable(GL_TEXTURE_2D);
+    glViewport(0, 0, dims.x, dims.y);
 
     // Compile and install the shaders for use with OpenGL
     GLuint vertShader, fragShader, glProgram;
@@ -584,16 +585,8 @@ __global__ void convertToGLCoords(Point* points, short2 dims)
 	short y = threadIdx.y + blockIdx.y * blockDim.y;
 	uint32_t offset = x + (y * (gridDim.x * blockDim.x));
 
-	if (dims.y > dims.x)
-	{
-		points[offset].x /= (dims.x / 2);
-		points[offset].y /= (dims.x / 2);
-	}
-	else
-	{
-		points[offset].x /= (dims.y / 2);
-		points[offset].y /= (dims.y / 2);
-	}
+    points[offset].x /= (dims.x / 2);
+	points[offset].y /= (dims.y / 2);
 
 	points[offset].x -= 1;
 	points[offset].y -= 1;
