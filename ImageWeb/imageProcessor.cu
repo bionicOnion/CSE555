@@ -18,7 +18,6 @@
 #include "scan.cu"
 
 #include "constants.hpp"
-#include "glShaders.h"
 #include "imageProcessor.hpp"
 #include "util.hpp"
 
@@ -42,7 +41,36 @@ __global__ void samplePoints(float* rowDist, float* colDist, short2 dims,
 	curandState_t* randStates, Point* pointBuf, uint32_t numPoints, ChannelBuf historicityBuf);
 
 
-__global__ void genDebugImg(Image img, Point* points, short2 dims, uint32_t numPoints);
+// Shader code
+static const GLchar* vertexShaderSource[]
+{
+	"#version 450 core                          			\n"
+	"                                           			\n"
+	"layout (location = 0) in vec2 position;    			\n"
+	"layout (location = 1) in vec3 color;       			\n"
+	"                                           			\n"
+	"out vec3 vs_color;                         			\n"
+	"                                           			\n"
+	"                                           			\n"
+	"void main(void)                            			\n"
+	"{                                          			\n"
+	"    gl_Position = vec4(position.x, position.y, 0, 0);	\n"
+	"}                                          			\n"
+};
+
+static const GLchar* fragmentShaderSource[]
+{
+	"#version 450 core                          			\n"
+	"                                           			\n"
+	"in vec3 vs_color;                          			\n"
+	"                                           			\n"
+	"out vec3 color;                            			\n"
+	"                                           			\n"
+	"void main(void)                            			\n"
+	"{                                          			\n"
+	"    color = vs_color;                      			\n"
+	"}                                          			\n"
+};
 
 
 ReturnCode processImageResource(ImageResource& input, ImageResource& output, ParamBundle params)
@@ -77,8 +105,8 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 	glutInitWindowSize(1, 1);
 	auto glutWindow = glutCreateWindow("Context Window");
 	glutHideWindow();
-	CUDA_CALL(cudaGLSetGLDevice(cudaDeviceHandle));
 	glewInit();
+	CUDA_CALL(cudaGLSetGLDevice(cudaDeviceHandle));
 
 	// Set up assorted OpenGL state
 	const GLfloat background[] = { params.background.r / 255.0f, params.background.g / 255.0f,
@@ -240,11 +268,6 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 		samplePoints<<<blockSizePoints, threadSize>>>(dev_distrRows, dev_distrCols, dims,
             dev_curandStates, dev_pointBuf, numPoints, dev_pointHistoricity);
         
-		if (params.debug)
-		{
-			genDebugImg<<<blockSize, threadSize>>>(dev_imgBuf, dev_pointBuf, dims, numPoints);
-			displayPreviewImageGPU(dev_imgBuf, dims);
-		}
         if (params.timing)
             CUDA_CALL(cudaEventRecord(pointsSampled, 0));
 
@@ -461,22 +484,4 @@ __global__ void samplePoints(float* rowDist, float* colDist, short2 dims,
 
     // 'Paint' the selected point into historicityBuf with atomicAdd
     // TODO
-}
-
-
-__global__ void genDebugImg(Image img, Point* points, short2 dims, uint32_t numPoints)
-{
-	short x = threadIdx.x + blockIdx.x * blockDim.x;
-	short y = threadIdx.y + blockIdx.y * blockDim.y;
-	uint32_t offset = x + (y * dims.x);
-	if (x > dims.x || y > dims.y)
-		return;
-
-	if (offset < numPoints)
-	{
-		uint32_t pointOffset = points[offset].x + (points[offset].y * dims.x);
-		img[pointOffset].r = 0;
-		img[pointOffset].g = 0;
-		img[pointOffset].b = 255;
-	}
 }

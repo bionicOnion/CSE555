@@ -27,7 +27,6 @@
   <ItemGroup>
     <ClInclude Include="argParser.hpp" />
     <ClInclude Include="constants.hpp" />
-    <ClInclude Include="glShaders.h" />
     <ClInclude Include="imageProcessor.hpp" />
     <ClInclude Include="imageResource.hpp" />
     <ClInclude Include="types.hpp" />
