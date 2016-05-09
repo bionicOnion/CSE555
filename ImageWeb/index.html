@@ -30,6 +30,12 @@
   <h3>Project Overview</h3>
   <p>
     <b>TODO</b>
+    <br><br>
+    More details can be found in the project proposal page <a
+    href="http://bioniconion.github.io/CSE555/ImageWeb/proposal.html">here</a>.
+    <br><br>
+    All of the code written for this project can be found in my repository <a
+    href="https://github.com/bionicOnion/CSE555/tree/master/ImageWeb">here</a>.
   </p>
 
   <hr>
@@ -83,7 +89,7 @@
         placed, the other of which determines the point location within that row.
       </li>
       <li>
-        <b>Point tesselation</b>&mdash;Points are tesselated using a simplified version of the
+        <b>Point triangulation</b>&mdash;Points are tesselated using a simplified version of the
         algorithm discussed in <a href="http://www.comp.nus.edu.sg/~tants/delaunay2DDownload.html">
         this</a> paper. In particulat, all of the code for transformation to and from discretized
         space has been excluded (as the sampled points are already discrete values), and the final
@@ -94,7 +100,14 @@
         </a>
       </li>
       <li>
-        <b>Drawing the generated image</b>&mdash;<b>TODO</b>
+        <b>Drawing the generated image</b>&mdash;The triangulation from the previous step stores
+        data about the computed triangles into a buffer which is shared between CUDA (as a region
+        of memory containing <code>Triangle</code> structs) and OpenGL (as a vertex buffer object).
+        This means that the completed triangulation can be drawn immediately, without any overhead
+        from moving data around: OpenGL already has a pointer directly to the computed triangles.
+        Drawing is done to an offscreen framebuffer; the contents of this framebuffer are then
+        copied back to the CPU to be saved and displayed (this is one of the elements of the
+        pipeline that could be improved; see the Future Work section below).
       </li>
       <li>
         <b>Releasing of system resources</b>&mdash;At the end of the pipeline, all of the buffers
@@ -117,6 +130,11 @@
   <p>
     All code for the project can be found in my repository <a
     href="https://github.com/bionicOnion/CSE555/tree/master/ImageWeb">here</a>.
+
+    Minimum specs:
+    OpenCV 3.0
+    Device with CUDA 2.0 capabilities
+    OpenGL 4.5
   </p>
 
   <hr>
@@ -216,6 +234,12 @@
     safety and liveness features guaranteed in a standard userspace application. Although the OS
     and the GPU driver do their best to ensure memory safety and other such features, it's still
     ultimately easier to write dangerously broken code on the GPU.
+    <br><br>
+    Working with both OpenGL and CUDA simultaneously meant juggling two interdependent and difficult
+    systems, neither of which I have used extensively. As such, determining the exact source of bugs
+    was frequently difficult (for instance, I was unsure for a long time if the reason that OpenGL
+    wasn't drawing anything waas because my graphics code was incorrect or because I wasn't feeing
+    it any data to draw with).
   </p>
 
   <hr>
@@ -230,25 +254,64 @@
     future improvement which might make for interesting projects:
 
     <h4>Using Image Pyramids in Edge Detection</h4>
-    <b>TODO</b>
+    As was reported above, edge data was far more useful than intensity data for determining the
+    positions at which points should be placed in the image. However, since only the highest
+    frequency edge data is computed in the current implementation of the pipeline, relying too
+    heavily on edge data will force points too strictly towards these edges. To mitigate this effect
+    and to increase the amount of data being used to determine the positions of sampled points,
+    edges could be detected at multiple scales through the use of an image pyramid (or another,
+    similar technique). Having multi-scale edge data would preserve the nice qualities of points
+    sampled on existing edges (since these tend to be the most recognizable featrues of images),
+    but with the added feature of drawing from a wider range of possible values (as low-frequency
+    edge data appears as a sort of 'smear' when viewed at the original resolution of the image).
 
     <h4>Custom Prefix-Sum Calculator</h4>
-    <b>TODO</b>
+    For the sake of time&mdash;since prefix-sum calculation for arbitrarily sized buffers turned out
+    to be an unexpectedly hard problem to compute efficiently on a GPU&mdash;I elected to use an
+    out-of-the-box solution from Nvidia's CUDA sample code. However, as is usually the case, it
+    would be possible to squeeze more performance out of the pipeline by building a custom solution
+    which is able to leverage the specific structure of the problem at hand. In addition, working on
+    implementing my own version of the prefix-sum algorithm would be useful as a learning tool for
+    becoming more familiar and comfortable with GPGPU algorithm design and development.
+
+    <h4>Improved Voronoi Diagram Generator</h4>
+    For the sake of simplicity, my current implementation uses a na&iuml;ve algorithm for computing
+    the Voronoi diagram that only marignally leverages the power of massive parallelism. For
+    instance, <a
+    href="https://pdfs.semanticscholar.org/48f0/fd485615be32f0f37f182b9f2ae4aa18fafc.pdf">this</a>
+    paper is the one referenced in the GPU-CDT paper discussed above which they used for efficient
+    Delaunay triangulation. Swapping to this (or an equivalent) implementation would alleviate one
+    of the most significant bottlenecks in the system as it currently stands. 
 
     <h4>Optimized Memory Access Patterns</h4>
-    <b>TODO</b>
+    Optimizing GPGPU code lies in the subtle art of controlling memory access patterns, an area in
+    which I have little to no experience and an aspect of development that I made no particular
+    effort to focus on during this project (as a functional application will always outperform a
+    fast one). Controlling the sequence of memory accesses and experimenting with different memory
+    types (such as __constant__ or __shared__, each of which has the improve system performance by
+    50% or more).
 
-    <h4>Expanded Coloring &amp; Tesselation Modes</h4>
-    <b>TODO</b>
+    <h4>Expanded Coloring &amp; Triangulation Modes</h4>
+    As it stands, only a handful of coloring modes and a single triangulation mode have been
+    implemented as part of the pipeline. Attempting to do work with constrained triangulation could
+    be beneficial in more accurately copying the source image, improving the quality of the results,
+    and extending the options in coloring modes would allow for a wider range of expression in the
+    images produced by the application (as well as some potentially valuable experience working with
+    more advanced features of OpenGL).
 
     <h4>Improved Image &amp; Video Code</h4>
-    <b>TODO</b>
+    Currently, I am relying on OpenCV for saving, loading, and displaying images; OpenCV's libraries
+    for doing each of the above are buggy and incomplete at best and actively missing or
+    non-functional at worst. On top of this, relying on OpenCV for this functionality adds an
+    otherwise unnecessary dependency to the system without much clear benefit. Transitioning to
+    different (or homemade) libraries for saving and loading images and relying on OpenGL for
+    displaying them would both improve and simplify the codebase&mdash;a win in every respect.
 
     <h4>Porting from CUDA to OpenCL</h4>
-    <b>TODO</b>
-
-    <h4>Refactoring to Support Real-Time Images &amp; Video</h4>
-    <b>TODO</b>
+    Much like my desire to move away from OpenCV discussed above, moving from CUDA to OpenCL would
+    remove one of the major limitations on the usability of the application. On top of that, porting
+    the code would give me an opportunity to become familiar with OpenCL, broadening my
+    understanding and ability with respect to GPGPU development.
   </p>
 
 
