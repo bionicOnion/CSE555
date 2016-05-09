@@ -26,8 +26,8 @@ typedef channel_t* ChannelBuf;
 // Triangulation data types
 typedef struct
 {
-    uint16_t x;
-    uint16_t y;
+    float x;
+    float y;
 
     Color color;
 } Point;
@@ -41,7 +41,7 @@ typedef struct
 
 
 // Parameter types
-enum class ColoringMode
+enum ColoringMode
 {
     AverageColor,
     PixelColors,

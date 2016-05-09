@@ -37,14 +37,17 @@ __global__ void blendDistributionData(ChannelBuf intensity, ChannelBuf edges,
     float historicityWeight);
 __global__ void copyRowSums(float* distrRows, float* distrRowSums, short2 dims);
 __global__ void normalizeCDF(float* distrRows, float* distrRowSums, float* distrCols, short2 dims);
-    float target);
 __global__ void samplePoints(float* rowDist, float* colDist, short2 dims,
     curandState_t* randStates, Point* pointBuf, uint32_t numPoints, ChannelBuf historicityBuf);
+__global__ void assignPointColorings(Point* points, Image srcImg, ColoringMode mode, Color bgColor,
+	Color fgColor, short2 dims);
 __global__ void computeVoronoi(uint32_t* voronoi, short2 dims, Point* points, uint32_t numPoints);
+__global__ void convertToGLCoords(Point* points, short2 dims);
 __global__ void constructTriangulation(uint32_t* voronoi, short2 dims, Point* points,
     Triangle* triangulation, uint32_t* numTriangles);
 
-__device__ uint16_t binarySearch(float* arr, short2 dims, uint32_t minIndex, uint32_t maxIndex,
+__device__ uint16_t binarySearch(float* arr, size_t arrSize, uint32_t minIndex, uint32_t maxIndex,
+	float target);
 
 
 // Shader code
@@ -53,13 +56,14 @@ static const GLchar* vertexShaderSource[]
     "#version 450 core                                      \n"
     "                                                       \n"
     "layout (location = 0) in vec2 position;                \n"
-    "layout (location = 1) in vec3 color;                   \n"
+    "layout (location = 1) in vec3 color;					\n"
     "                                                       \n"
-    "out vec3 vs_color;                                     \n"
+    "out vec3 vs_color;										\n"
     "                                                       \n"
     "void main(void)                                        \n"
     "{                                                      \n"
-    "    gl_Position = vec4(position.x, position.y, 0, 0);  \n"
+    "    gl_Position = vec4(position.x, position.y, 0, 1);  \n"
+    "    vs_color = color;									\n"
     "}                                                      \n"
 };
 
@@ -73,7 +77,7 @@ static const GLchar* fragmentShaderSource[]
     "                                                       \n"
     "void main(void)                                        \n"
     "{                                                      \n"
-    "    color = vs_color;                                  \n"
+	"    color = vs_color;                                  \n"
     "}                                                      \n"
 };
 
@@ -106,7 +110,7 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
     char* argv = "";
     glutInit(&argc, &argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-    glutInitWindowSize(1, 1);
+    glutInitWindowSize(dims.x, dims.y);
     auto glutWindow = glutCreateWindow("Context Window");
     glutHideWindow();
     glewInit();
@@ -116,7 +120,8 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
     const GLfloat background[] = { params.background.r / 255.0f, params.background.g / 255.0f,
         params.background.b / 255.0f, 1.0f };
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDisable(GL_DEPTH_TEST);
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_STENCIL_TEST);
     glEnable(GL_TEXTURE_2D);
 
     // Compile and install the shaders for use with OpenGL
@@ -155,11 +160,13 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
     // Generate a framebuffer for OpenGL to draw to
     GLuint dev_texture, dev_frameBuf;
     glGenTextures(1, &dev_texture);
-    glBindTexture(GL_TEXTURE_2D, dev_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, dims.x, dims.y, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glBindTexture(GL_TEXTURE_RECTANGLE, dev_texture);
+	glTexParameterf(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGB8, dims.x, dims.y, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
     glGenFramebuffers(1, &dev_frameBuf);
     glBindFramebuffer(GL_FRAMEBUFFER, dev_frameBuf);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, dev_texture, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, dev_texture, 0);
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         return PRINT_ERR_MSG_GL(glGetError());
     glRetCode = glGetError();
@@ -172,17 +179,18 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
     glBindVertexArray(dev_vao);
     glGenBuffers(1, &dev_vertexBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, dev_vertexBuffer);
-    glNamedBufferStorage(dev_vertexBuffer, 2 * numPoints * sizeof(Triangle), NULL, 0);
+    glNamedBufferStorage(dev_vertexBuffer, dims.x * dims.y / 2 * sizeof(Triangle), NULL, 0);
     glRetCode = glGetError();
     if (glRetCode != GL_NO_ERROR)
         return PRINT_ERR_MSG_GL(glRetCode);
     glVertexArrayAttribBinding(dev_vao, 0, 0);
-    glVertexArrayAttribFormat(dev_vao, 0, 2, GL_UNSIGNED_SHORT, GL_FALSE, offsetof(Point, x));
+    glVertexArrayAttribFormat(dev_vao, 0, 2, GL_FLOAT, GL_FALSE, offsetof(Point, x));
     glEnableVertexArrayAttrib(dev_vao, 0);
-    glVertexArrayAttribBinding(dev_vao, 1, 0);
-    glVertexArrayAttribFormat(dev_vao, 1, 3, GL_UNSIGNED_BYTE, GL_FALSE, offsetof(Point, color));
-    glEnableVertexArrayAttrib(dev_vao, 1);
-    glVertexArrayVertexBuffer(dev_vao, 0, dev_vertexBuffer, 0, sizeof(Point));
+	glVertexArrayVertexBuffer(dev_vao, 0, dev_vertexBuffer, 0, sizeof(Point));
+	glVertexArrayAttribBinding(dev_vao, 1, 0);
+	glVertexArrayAttribFormat(dev_vao, 1, 3, GL_UNSIGNED_BYTE, GL_FALSE, offsetof(Point, color));
+	glEnableVertexArrayAttrib(dev_vao, 1);
+	glVertexArrayVertexBuffer(dev_vao, 0, dev_vertexBuffer, 0, sizeof(Point));
     glRetCode = glGetError();
     if (glRetCode != GL_NO_ERROR)
         return PRINT_ERR_MSG_GL(glRetCode);
@@ -272,12 +280,13 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
         if (params.debug)
             visualizeDistr(dev_distr, dims);
         
-        // Sample numPoints points from the distribution
-        //   TODO Assign colors to points according to current coloring mode
+        // Sample numPoints points from the distribution and assign point colors
         CUDA_CALL(cudaMemset(dev_pointHistoricity, 0, imgBufSize * sizeof(channel_t)));
         samplePoints<<<blockSizePoints, threadSize>>>(dev_distrRows, dev_distrCols, dims,
             dev_curandStates, dev_pointBuf, numPoints, dev_pointHistoricity);
-        
+		assignPointColorings<<<blockSizePoints, threadSize>>>(dev_pointBuf, dev_imgBuf, params.mode,
+			params.background, params.foreground, dims);
+
         if (params.timing)
             CUDA_CALL(cudaEventRecord(pointsSampled, 0));
 
@@ -288,19 +297,22 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
         CUDA_CALL(cudaGraphicsResourceGetMappedPointer((void**) &dev_triangleBuf, &numTriangleBytes,
             dev_vertBufCUDA));
         computeVoronoi<<<blockSize, threadSize>>>(dev_voronoi, dims, dev_pointBuf, numPoints);
-        CUDA_CALL(cudaMemset(dev_numTriangles, 0, sizeof(dev_numTriangles)));
+		convertToGLCoords<<<blockSizePoints, threadSize>>>(dev_pointBuf, dims);
+        CUDA_CALL(cudaMemset(dev_numTriangles, 0, sizeof(uint32_t)));
         constructTriangulation<<<blockSize, threadSize>>>(dev_voronoi, dims, dev_pointBuf,
             dev_triangleBuf, dev_numTriangles);
         CUDA_CALL(cudaMemcpy(&host_numTriangles, dev_numTriangles, sizeof(uint32_t),
             cudaMemcpyDeviceToHost));
         CUDA_CALL(cudaGraphicsUnmapResources(1, &dev_vertBufCUDA));
         
+		if (params.debug)
+			std::cout << "Number of triangles in frame " << i << ": " << host_numTriangles << std::endl << std::endl;
         if (params.timing)
             CUDA_CALL(cudaEventRecord(pointsTesselated, 0));
 
         // Call out to OpenGL to generate the final image
         glBindFramebuffer(GL_FRAMEBUFFER, dev_frameBuf);
-        glClearNamedFramebufferfv(dev_frameBuf, GL_COLOR, 0, background);
+		glClearBufferfv(GL_COLOR, 0, background);
         glUseProgram(glProgram);
         glDrawArrays(GL_TRIANGLES, 0, host_numTriangles * 3);
         glRetCode = glGetError();
@@ -502,12 +514,39 @@ __global__ void samplePoints(float* rowDist, float* colDist, short2 dims,
 
     // Perform binary searches to find the corresponding index in the distribution
     pointBuf[offset].y = binarySearch(colDist, dims.y, 0, dims.y, randY);
-    pointBuf[offset].x = binarySearch(rowDist + (pointBuf[offset].y * dims.x), dims.x, 0, dims.x,
-        randX);
+    pointBuf[offset].x = binarySearch(rowDist + ((uint16_t) pointBuf[offset].y * dims.x), dims.x, 0,
+		dims.x, randX);
 
     // 'Paint' the selected point into historicityBuf with atomicAdd
     // TODO
 }
+
+
+__global__ void assignPointColorings(Point* points, Image srcImg, ColoringMode mode, Color bgColor,
+	Color fgColor, short2 dims)
+{
+	short x = threadIdx.x + blockIdx.x * blockDim.x;
+	short y = threadIdx.y + blockIdx.y * blockDim.y;
+	uint32_t offset = x + (y * (gridDim.x * blockDim.x));
+
+	switch (mode)
+	{
+	case ColoringMode::AverageColor:
+		// TODO
+		points[offset].color = fgColor;
+		break;
+	case ColoringMode::PixelColors:
+		uint32_t imgOffset = points[offset].x + (points[offset].y * dims.x);
+		points[offset].color = srcImg[imgOffset];
+		break;
+	case ColoringMode::SolidColors:
+		points[offset].color = fgColor;
+		break;
+	default:
+		break;
+	}
+}
+
 
 __global__ void computeVoronoi(uint32_t* voronoi, short2 dims, Point* points, uint32_t numPoints)
 {
@@ -524,8 +563,8 @@ __global__ void computeVoronoi(uint32_t* voronoi, short2 dims, Point* points, ui
     uint32_t bestIdx = 0;
     for (uint32_t i = 0; i < numPoints; ++i)
     {
-        deltaX = points.x - x;
-        deltaY = points.y - y;
+        deltaX = points[i].x - x;
+        deltaY = points[i].y - y;
         dist = deltaX*deltaX + deltaY*deltaY;
         if (dist < minDist)
         {
@@ -539,13 +578,36 @@ __global__ void computeVoronoi(uint32_t* voronoi, short2 dims, Point* points, ui
 }
 
 
+__global__ void convertToGLCoords(Point* points, short2 dims)
+{
+	short x = threadIdx.x + blockIdx.x * blockDim.x;
+	short y = threadIdx.y + blockIdx.y * blockDim.y;
+	uint32_t offset = x + (y * (gridDim.x * blockDim.x));
+
+	if (dims.y > dims.x)
+	{
+		points[offset].x /= (dims.x / 2);
+		points[offset].y /= (dims.x / 2);
+	}
+	else
+	{
+		points[offset].x /= (dims.y / 2);
+		points[offset].y /= (dims.y / 2);
+	}
+
+	points[offset].x -= 1;
+	points[offset].y -= 1;
+	// TODO fix this
+}
+
+
 __global__ void constructTriangulation(uint32_t* voronoi, short2 dims, Point* points,
     Triangle* triangulation, uint32_t* numTriangles)
 {
     short x = threadIdx.x + blockIdx.x * blockDim.x;
     short y = threadIdx.y + blockIdx.y * blockDim.y;
     uint32_t offset = x + (y * (gridDim.x * blockDim.x));
-    if (x > dims.x - 1 || y > dims.y - 1)
+    if (x > dims.x - 2 || y > dims.y - 2)
         return;
 
     // Determine if the current point is a Voronoi vertex
@@ -559,18 +621,18 @@ __global__ void constructTriangulation(uint32_t* voronoi, short2 dims, Point* po
     neighbors[0] = voronoi[offset];
     if (voronoi[offset] != voronoi[offset + 1])
     {
-        ++numNeighbors;
-        neighbors[numNeighbors] = voronoi[offset + 1];
+		neighbors[numNeighbors] = voronoi[offset + 1];
+		++numNeighbors;
     }
     if (voronoi[offset] != voronoi[offset + dims.x])
     {
-        ++numNeighbors;
-        neighbors[numNeighbors] = voronoi[offset + dims.x];
+		neighbors[numNeighbors] = voronoi[offset + dims.x];
+		++numNeighbors;
     }
     if (voronoi[offset + dims.x] != voronoi[offset + dims.x + 1])
     {
-        ++numNeighbors;
-        neighbors[numNeighbors] = voronoi[offset + dims.x + 1];
+		neighbors[numNeighbors] = voronoi[offset + dims.x + 1];
+		++numNeighbors;
     }
 
     // If a point is a vertex, add triangles connecting the neighboring points
