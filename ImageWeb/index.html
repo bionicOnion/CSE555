@@ -238,8 +238,13 @@
     Working with both OpenGL and CUDA simultaneously meant juggling two interdependent and difficult
     systems, neither of which I have used extensively. As such, determining the exact source of bugs
     was frequently difficult (for instance, I was unsure for a long time if the reason that OpenGL
-    wasn't drawing anything waas because my graphics code was incorrect or because I wasn't feeing
+    wasn't drawing anything was because my graphics code was incorrect or because I wasn't feeing
     it any data to draw with).
+    <br><br>
+    Even without the difficulties of CUDA interoperability, coming to understand OpenGL's default
+    behaviors took hours in and of itself (the 'helpful' insertion of word-aligned padding into
+    every row of an image when it's being copied was a particular bug that I spent the greater part
+    of an evening tracking down).
   </p>
 
   <hr>
