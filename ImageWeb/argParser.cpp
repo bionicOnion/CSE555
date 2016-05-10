@@ -55,21 +55,23 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
         {
 			if (++i >= argc)
 				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
-			params->background.r = std::stoi(argv[i]);
+			params->background.r = std::stoi(argv[i]) / 255.0;
 			if (++i >= argc)
 				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
-			params->background.g = std::stoi(argv[i]);
+			params->background.g = std::stoi(argv[i]) / 255.0;
 			if (++i >= argc)
 				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
-			params->background.b = std::stoi(argv[i]);
+			params->background.b = std::stoi(argv[i]) / 255.0;
         }
         else if (COLORING_MODE_ARGS.find(argv[i]) != COLORING_MODE_ARGS.end())
         {
 			if (++i >= argc)
 				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
 
-            if (AVERAGE_COLORING_MODE.find(argv[i]) != AVERAGE_COLORING_MODE.end())
-                params->mode = ColoringMode::AverageColor;
+			if (BLENDED_COLORING_MODE.find(argv[i]) != BLENDED_COLORING_MODE.end())
+				params->mode = ColoringMode::BlendedColor;
+			else if (CENTROID_COLORING_MODE.find(argv[i]) != CENTROID_COLORING_MODE.end())
+				params->mode = ColoringMode::CentroidColor;
             else if (PIXEL_COLORING_MODE.find(argv[i]) != PIXEL_COLORING_MODE.end())
                 params->mode = ColoringMode::PixelColors;
             else if (SOLID_COLORING_MODE.find(argv[i]) != SOLID_COLORING_MODE.end())
@@ -86,13 +88,13 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
 			// TODO Handle possible exceptions
 			if (++i >= argc)
 				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
-			params->foreground.r = std::stoi(argv[i]);
+			params->foreground.r = std::stoi(argv[i]) / 255.0;
 			if (++i >= argc)
 				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
-			params->foreground.g = std::stoi(argv[i]);
+			params->foreground.g = std::stoi(argv[i]) / 255.0;
 			if (++i >= argc)
 				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
-			params->foreground.b = std::stoi(argv[i]);
+			params->foreground.b = std::stoi(argv[i]) / 255.0;
         }
         else if (HELP_ARGS.find(argv[i]) != HELP_ARGS.end())
         {
@@ -255,7 +257,8 @@ void printUsage(std::string programName)
     std::cout << "Optional Parameters:" << std::endl;
     std::cout << "  Background Color:                [-b/--background r g b]" << std::endl;
     std::cout << "  Coloring Mode:                   [-c/--coloringMode]" << std::endl;
-    std::cout << "    [a/avg/average]: Foreground color is average of image color" << std::endl;
+	std::cout << "    [b/blend]: Similar to Pixel Mode, but with filled triangles" << std::endl;
+	std::cout << "    [c/centroid]: Filled triangles with color sampled from centroid" << std::endl;
     std::cout << "    [p/pix/pixel]: Foreground color is sampled from input image" << std::endl;
     std::cout << "    [s/solid]: Foreground/background colors are user-specified" << std::endl;
 	std::cout << "  Debug Mode:                      [-d/--debug]" <<std::endl;
@@ -276,12 +279,16 @@ void printParams(ParamBundle* params)
 	std::cout << "  Intensity/Edge: " << params->intensityEdgeWeight << std::endl;
 	std::cout << "  Historicity:    " << params->historicityWeight << std::endl;
 	std::string mode;
-	if (params->mode == ColoringMode::SolidColors)
-		mode = "Solid Colors";
-	else if (params->mode == ColoringMode::AverageColor)
-		mode = "Average Color";
-	else
+	if (params->mode == ColoringMode::BlendedColor)
+		mode = "Blended Colors";
+	else if (params->mode == ColoringMode::CentroidColor)
+		mode = "Centroid Color";
+	else if (params->mode == ColoringMode::PixelColors)
 		mode = "Pixel Color";
+	else if (params->mode == ColoringMode::SolidColors)
+		mode = "Solid Color";
+	else
+		mode = "Unrecognized Coloring Mode";
 	std::cout << "  Coloring Mode:  " << mode << std::endl;
 	std::cout << "  Foreground:     ("
 		<< static_cast<unsigned>(params->foreground.r) << ", "

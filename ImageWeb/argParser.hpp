@@ -13,12 +13,12 @@
 
 
 // Default parameter values
-const float DEFAULT_POINT_RATIO = 0.0033f;
+const float DEFAULT_POINT_RATIO = 0.005f;
 const float DEFAULT_INTENSITY_EDGE_WEIGHT = 0.005f;
 const float DEFAULT_HISTORICITY_WEIGHT = 0.2f; // TODO
 const ColoringMode DEFAULT_COLORING_MODE = ColoringMode::SolidColors;
-const Color DEFAULT_FOREGROUND = Color { 255, 255, 255 }; // Default to white
-const Color DEFAULT_BACKGROUND = Color {   0,   0,   0 }; // Default to black
+const Color DEFAULT_FOREGROUND = Color { 1, 1, 1 }; // Default to white
+const Color DEFAULT_BACKGROUND = Color { 0, 0, 0 }; // Default to black
 
 // Argument keys
 const std::unordered_set<std::string> BACKGROUND_COLOR_ARGS { "-b", "--background" };
@@ -36,7 +36,8 @@ const std::unordered_set<std::string> TIMING_ARGS{ "-t", "--time" };
 const std::unordered_set<std::string> VIDEO_FILE_ARGS { "-v", "--video" };
 
 // Coloring mode options
-const std::unordered_set<std::string> AVERAGE_COLORING_MODE { "a", "avg", "average" };
+const std::unordered_set<std::string> BLENDED_COLORING_MODE{ "b", "blend" };
+const std::unordered_set<std::string> CENTROID_COLORING_MODE{ "c", "centroid" };
 const std::unordered_set<std::string> PIXEL_COLORING_MODE { "p", "pix", "pixel" };
 const std::unordered_set<std::string> SOLID_COLORING_MODE { "s", "solid" };
 

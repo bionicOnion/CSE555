@@ -17,10 +17,16 @@ typedef struct
     channel_t r;
     channel_t g;
     channel_t b;
-} Color;
-typedef Color Pixel;
+} Pixel;
 typedef Pixel* Image;
 typedef channel_t* ChannelBuf;
+
+typedef struct
+{
+	float r;
+	float g;
+	float b;
+} Color;
 
 
 // Triangulation data types
@@ -43,7 +49,8 @@ typedef struct
 // Parameter types
 enum ColoringMode
 {
-    AverageColor,
+	BlendedColor,
+	CentroidColor,
     PixelColors,
     SolidColors,
 };
