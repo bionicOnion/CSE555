@@ -18,7 +18,10 @@
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 #include <curand_kernel.h>
-#include "scan.cu"
+
+// Thrust
+#include <thrust/device_ptr.h>
+#include <thrust/scan.h>
 
 #include "constants.hpp"
 #include "imageProcessor.hpp"
@@ -26,9 +29,6 @@
 
 
 // Forward declarations
-ReturnCode generateCDF(float* distribution, float* distrRows, float* distrCols,
-	float* dev_distrRowSums, short2 dims, dim3 blockSize, dim3 threadSize);
-
 __global__ void cuRAND_init(curandState_t* states, uint64_t seed);
 __global__ void computePixelIntensities(Image img, ChannelBuf intensities, short2 dims);
 __global__ void detectEdges(ChannelBuf intensities, ChannelBuf edges, short2 dims);
@@ -54,31 +54,31 @@ __device__ uint16_t binarySearch(float* arr, size_t arrSize, uint32_t minIndex, 
 static const GLchar* vertexShaderSource[]
 {
 	"#version 450 core                                      \n"
-		"                                                       \n"
-		"layout (location = 0) in vec2 position;                \n"
-		"layout (location = 1) in vec3 color;                   \n"
-		"                                                       \n"
-		"out vec3 vs_color;                                     \n"
-		"                                                       \n"
-		"void main(void)                                        \n"
-		"{                                                      \n"
-		"    gl_Position = vec4(position.x, position.y, 0, 1);  \n"
-		"    vs_color = color;                                  \n"
-		"}                                                      \n"
+	"                                                       \n"
+	"layout (location = 0) in vec2 position;                \n"
+	"layout (location = 1) in vec3 color;                   \n"
+	"                                                       \n"
+	"out vec3 vs_color;                                     \n"
+	"                                                       \n"
+	"void main(void)                                        \n"
+	"{                                                      \n"
+	"    gl_Position = vec4(position.x, position.y, 0, 1);  \n"
+	"    vs_color = color;                                  \n"
+	"}                                                      \n"
 };
 
 static const GLchar* fragmentShaderSource[]
 {
 	"#version 450 core                                      \n"
-		"                                                       \n"
-		"in vec3 vs_color;                                      \n"
-		"                                                       \n"
-		"out vec3 color;                                        \n"
-		"                                                       \n"
-		"void main(void)                                        \n"
-		"{                                                      \n"
-		"    color = vs_color;                                  \n"
-		"}                                                      \n"
+	"                                                       \n"
+	"in vec3 vs_color;                                      \n"
+	"                                                       \n"
+	"out vec3 color;                                        \n"
+	"                                                       \n"
+	"void main(void)                                        \n"
+	"{                                                      \n"
+	"    color = vs_color;                                  \n"
+	"}                                                      \n"
 };
 
 
@@ -93,10 +93,13 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 	auto dims = make_short2(input.getWidth(), input.getHeight());
 	uint32_t imgBufSize = dims.x * dims.y;
 	uint32_t numPoints = static_cast<uint32_t>(imgBufSize * params.pointRatio);
-	dim3 blockSize(dims.x / THREADS_PER_BLOCK, dims.y / THREADS_PER_BLOCK);
+	dim3 blockSize(1 + dims.x / THREADS_PER_BLOCK, 1 + dims.y / THREADS_PER_BLOCK);
 	auto pointDim = static_cast<uint32_t>(sqrt(numPoints / THREADS_PER_BLOCK / THREADS_PER_BLOCK));
 	dim3 blockSizePoints(pointDim, pointDim);
 	dim3 threadSize(THREADS_PER_BLOCK, THREADS_PER_BLOCK);
+
+	if (params.debug)
+		std::cout << "Image dimensions: " << dims.x << "x" << dims.y << std::endl << std::endl;
 
 	// Ensure that a CUDA device with compute level 2.0 or greater is available
 	cudaDeviceProp prop;
@@ -124,7 +127,7 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_STENCIL_TEST);
 	glEnable(GL_TEXTURE_2D);
-	glViewport(0, 0, dims.x, dims.y);
+	glViewport(0, 0, dims.x / 2, dims.y / 2);
 
 	// Compile and install the shaders for use with OpenGL
 	GLuint vertShader, fragShader, glProgram;
@@ -181,7 +184,7 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 	glBindVertexArray(dev_vao);
 	glGenBuffers(1, &dev_vertexBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, dev_vertexBuffer);
-	glNamedBufferStorage(dev_vertexBuffer, dims.x * dims.y / 2 * sizeof(Triangle), NULL, 0);
+	glNamedBufferStorage(dev_vertexBuffer, numPoints * 10 * sizeof(Triangle), NULL, 0);
 	glRetCode = glGetError();
 	if (glRetCode != GL_NO_ERROR)
 		return PRINT_ERR_MSG_GL(glRetCode);
@@ -211,7 +214,6 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 	Image dev_imgBuf;
 	ChannelBuf dev_intensities, dev_edges, dev_pointHistoricity;
 	float* dev_distr;
-	float* dev_distrRows;
 	float* dev_distrRowSums;
 	float* dev_distrCols;
 	Point* dev_pointBuf;
@@ -223,16 +225,12 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 	CUDA_CALL(cudaMalloc(&dev_edges, imgBufSize * sizeof(channel_t)));
 	CUDA_CALL(cudaMalloc(&dev_pointHistoricity, imgBufSize * sizeof(channel_t)));
 	CUDA_CALL(cudaMalloc(&dev_distr, imgBufSize * sizeof(float)));
-	CUDA_CALL(cudaMalloc(&dev_distrRows, imgBufSize * sizeof(float)));
 	CUDA_CALL(cudaMalloc(&dev_distrRowSums, dims.y * sizeof(float)));
 	CUDA_CALL(cudaMalloc(&dev_distrCols, dims.y * sizeof(float)));
 	CUDA_CALL(cudaMalloc(&dev_pointBuf, numPoints * sizeof(Point)));
 	CUDA_CALL(cudaMalloc(&dev_voronoi, imgBufSize * sizeof(uint32_t)));
 	CUDA_CALL(cudaMalloc(&dev_numTriangles, sizeof(uint32_t)));
 	CUDA_CALL(cudaMalloc(&dev_curandStates, numPoints * sizeof(curandState_t)));
-	retCode = preallocBlockSums(imgBufSize);
-	if (retCode != SUCCESS)
-		return retCode;
 
 	// Hook up the OpenGL vertex buffer to CUDA
 	cudaGraphicsResource* dev_vertBufCUDA;
@@ -272,10 +270,22 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 		blendDistributionData<<<blockSize, threadSize>>>(dev_intensities, dev_edges,
 			dev_pointHistoricity, dev_distr, dims, params.intensityEdgeWeight,
 			params.historicityWeight);
-		retCode = generateCDF(dev_distr, dev_distrRows, dev_distrCols, dev_distrRowSums, dims,
-			blockSize, threadSize);
-		if (retCode != SUCCESS)
-			return retCode;
+
+		if (params.debug)
+			visualizeDistr(dev_distr, dims);
+
+		// Generate CDF from distribution
+		thrust::device_ptr<float> t_distr = thrust::device_pointer_cast(dev_distr);
+		thrust::device_ptr<float> t_distrRowSums = thrust::device_pointer_cast(dev_distrRowSums);
+		thrust::device_ptr<float> t_distrCols = thrust::device_pointer_cast(dev_distrCols);
+		for (auto i = 0; i < dims.y - 1; ++i)
+			thrust::exclusive_scan(t_distr + dims.x*i, t_distr + dims.x*i + dims.x,
+				t_distr + dims.x*i);
+		copyRowSums<<<blockSize, threadSize>>>(dev_distr, dev_distrRowSums, dims);
+		thrust::exclusive_scan(t_distrRowSums, t_distrRowSums + dims.y, t_distrCols);
+		normalizeCDF<<<blockSize, threadSize>>>(dev_distr, dev_distrRowSums, dev_distrCols, dims);
+		float one = 1;
+		CUDA_CALL(cudaMemcpy(dev_distrCols + dims.y - 1, &one, sizeof(one), cudaMemcpyHostToDevice));
 
 		if (params.timing)
 			CUDA_CALL(cudaEventRecord(distrGenerated, 0));
@@ -284,7 +294,7 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 
 		// Sample numPoints points from the distribution and assign point colors
 		CUDA_CALL(cudaMemset(dev_pointHistoricity, 0, imgBufSize * sizeof(channel_t)));
-		samplePoints<<<blockSizePoints, threadSize>>>(dev_distrRows, dev_distrCols, dims,
+		samplePoints<<<blockSizePoints, threadSize>>>(dev_distr, dev_distrCols, dims,
 			dev_curandStates, dev_pointBuf, numPoints, dev_pointHistoricity);
 
 		if (params.timing)
@@ -303,14 +313,15 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 			dev_triangleBuf, dev_numTriangles);
 		assignTriangleColorings<<<blockSize, threadSize>>>(dev_triangleBuf, dev_numTriangles,
 			dev_imgBuf, params.mode, params.background, params.foreground, dims);
-		// TODO Investigate illegal memory access which is happening here
 		CUDA_CALL(cudaMemcpy(&host_numTriangles, dev_numTriangles, sizeof(uint32_t),
 			cudaMemcpyDeviceToHost));
 		CUDA_CALL(cudaGraphicsUnmapResources(1, &dev_vertBufCUDA));
 
 		if (params.debug)
-			std::cout << "Number of triangles in frame " << i << ": " << host_numTriangles
-				<< std::endl << std::endl;
+		{
+			std::cout << "Triangles in frame " << i << ": " << host_numTriangles << std::endl;
+			std::cout << "Triangles/Points = " << 1.0 * host_numTriangles / numPoints << std::endl;
+		}
 		if (params.timing)
 			CUDA_CALL(cudaEventRecord(pointsTesselated, 0));
 
@@ -356,14 +367,12 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 	CUDA_CALL(cudaFree(dev_edges));
 	CUDA_CALL(cudaFree(dev_pointHistoricity));
 	CUDA_CALL(cudaFree(dev_distr));
-	CUDA_CALL(cudaFree(dev_distrRows));
 	CUDA_CALL(cudaFree(dev_distrRowSums));
 	CUDA_CALL(cudaFree(dev_distrCols));
 	CUDA_CALL(cudaFree(dev_pointBuf));
 	CUDA_CALL(cudaFree(dev_voronoi));
 	CUDA_CALL(cudaFree(dev_numTriangles));
 	CUDA_CALL(cudaFree(dev_curandStates));
-	deallocBlockSums();
 
 	return SUCCESS;
 }
@@ -388,7 +397,7 @@ __global__ void computePixelIntensities(Image img, ChannelBuf intensities, short
 	short x = threadIdx.x + blockIdx.x * blockDim.x;
 	short y = threadIdx.y + blockIdx.y * blockDim.y;
 	uint32_t offset = x + (y * dims.x);
-	if (x > dims.x || y > dims.y)
+	if (x >= dims.x || y >= dims.y)
 		return;
 
 	intensities[offset] = (img[offset].r + img[offset].g + img[offset].b) / 3;
@@ -408,7 +417,7 @@ __global__ void detectEdges(ChannelBuf intensities, ChannelBuf edges, short2 dim
 	short x = threadIdx.x + (blockIdx.x * blockDim.x);
 	short y = threadIdx.y + (blockIdx.y * blockDim.y);
 	unsigned int offset = x + (y * dims.x);
-	if (x > dims.x || y > dims.y)
+	if (x >= dims.x || y >= dims.y)
 		return;
 
 	// Compute image gradient
@@ -436,7 +445,7 @@ __global__ void blendDistributionData(ChannelBuf intensity, ChannelBuf edges,
 	short x = threadIdx.x + blockIdx.x * blockDim.x;
 	short y = threadIdx.y + blockIdx.y * blockDim.y;
 	uint32_t offset = x + (y * dims.x);
-	if (x > dims.x || y > dims.y)
+	if (x >= dims.x || y >= dims.y)
 		return;
 
 	// Calculate the value for this point in the distribution
@@ -447,29 +456,12 @@ __global__ void blendDistributionData(ChannelBuf intensity, ChannelBuf edges,
 }
 
 
-ReturnCode generateCDF(float* distribution, float* distrRows, float* distrCols,
-	float* distrRowSums, short2 dims, dim3 blockSize, dim3 threadSize)
-{
-	cudaError_t cudaRetCode;
-
-	for (auto i = 0; i < dims.y - 1; ++i)
-		prescanArray(distrRows + dims.x*i, distribution + dims.x*i, dims.x);
-	copyRowSums<<<blockSize, threadSize>>>(distrRows, distrRowSums, dims);
-	prescanArray(distrCols, distrRowSums, dims.y);
-	normalizeCDF<<<blockSize, threadSize>>>(distrRows, distrRowSums, distrCols, dims);
-	float one = 1;
-	CUDA_CALL(cudaMemcpy(distrCols + dims.y - 1, &one, sizeof(one), cudaMemcpyHostToDevice));
-
-	return SUCCESS;
-}
-
-
 __global__ void copyRowSums(float* distrRows, float* distrRowSums, short2 dims)
 {
 	short x = threadIdx.x + blockIdx.x * blockDim.x;
 	short y = threadIdx.y + blockIdx.y * blockDim.y;
 	uint32_t offset = x + (y * dims.x);
-	if (offset > dims.x*dims.y || x != dims.x - 1)
+	if (x != dims.x - 1 || y >= dims.y)
 		return;
 
 	distrRowSums[y] = distrRows[offset];
@@ -481,7 +473,7 @@ __global__ void normalizeCDF(float* distrRows, float* distrRowSums, float* distr
 	short x = threadIdx.x + blockIdx.x * blockDim.x;
 	short y = threadIdx.y + blockIdx.y * blockDim.y;
 	uint32_t offset = x + (y * dims.x);
-	if (offset > dims.x*dims.y)
+	if (x >= dims.x || y >= dims.y)
 		return;
 
 	distrRows[offset] /= distrRowSums[y];
@@ -530,8 +522,8 @@ __global__ void computeVoronoi(uint32_t* voronoi, short2 dims, Point* points, ui
 {
 	short x = threadIdx.x + blockIdx.x * blockDim.x;
 	short y = threadIdx.y + blockIdx.y * blockDim.y;
-	uint32_t offset = x + (y * (gridDim.x * blockDim.x));
-	if (x > dims.x || y > dims.y)
+	uint32_t offset = x + (y * dims.x);
+	if (x >= dims.x || y >= dims.y)
 		return;
 
 	// Find the closest point
@@ -562,8 +554,8 @@ __global__ void convertToGLCoords(Point* points, short2 dims)
 	short y = threadIdx.y + blockIdx.y * blockDim.y;
 	uint32_t offset = x + (y * (gridDim.x * blockDim.x));
 
-	points[offset].x /= (dims.x / 2);
-	points[offset].y /= (dims.y / 2);
+	points[offset].x /= dims.x / 2;
+	points[offset].y /= dims.y / 2;
 
 	points[offset].x -= 1;
 	points[offset].y -= 1;
@@ -575,8 +567,8 @@ __global__ void constructTriangulation(uint32_t* voronoi, short2 dims, Point* po
 {
 	short x = threadIdx.x + blockIdx.x * blockDim.x;
 	short y = threadIdx.y + blockIdx.y * blockDim.y;
-	uint32_t offset = x + (y * (gridDim.x * blockDim.x));
-	if (x > dims.x - 2 || y > dims.y - 2)
+	uint32_t offset = x + (y * dims.x);
+	if (x >= dims.x - 1 || y >= dims.y - 1)
 		return;
 
 	// Determine if the current point is a Voronoi vertex

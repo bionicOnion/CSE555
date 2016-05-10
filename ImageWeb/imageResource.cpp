@@ -86,7 +86,7 @@ ReturnCode ImageResource::load(std::string filename)
     // Load either an image or a video as specified in the constructor
     if (type == InputType::Image)
     {
-        frames.push_back(cv::imread(filename));
+        frames.push_back(cv::imread(filename, CV_LOAD_IMAGE_COLOR));
 		if (!frames[0].data)
 			return PRINT_ERR_MSG(FILE_NOT_OPENED);
     }
