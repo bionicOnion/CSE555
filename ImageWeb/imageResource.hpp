@@ -2,7 +2,7 @@
  * imageResource.hpp
  *
  * Author: Robert Miller
- * Last Edit: 4/27/16
+ * Last Edit: 5/10/16
  *
  * TODO Fill in a description of the class
  */

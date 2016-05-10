@@ -185,7 +185,7 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 	glBindVertexArray(dev_vao);
 	glGenBuffers(1, &dev_vertexBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, dev_vertexBuffer);
-	glNamedBufferStorage(dev_vertexBuffer, dims.x * dims.y / 2 * sizeof(Triangle), NULL, 0); // TODO
+	glNamedBufferStorage(dev_vertexBuffer, numPoints * 16 * sizeof(Triangle), NULL, 0);
 	glRetCode = glGetError();
 	if (glRetCode != GL_NO_ERROR)
 		return PRINT_ERR_MSG_GL(glRetCode);
@@ -514,7 +514,7 @@ __global__ void samplePoints(float* rowDist, float* colDist, short2 dims,
 	pointBuf[offset].x = binarySearch(rowDist + ((uint16_t)pointBuf[offset].y * dims.x), dims.x, 0,
 		dims.x, randX);
 
-	// 'Paint' the selected point into historicityBuf with atomicAdd
+	// 'Paint' the selected point into historicityBuf
 	// TODO
 }
 

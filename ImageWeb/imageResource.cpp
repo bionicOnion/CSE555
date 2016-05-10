@@ -2,7 +2,7 @@
  * imageResource.cpp
  *
  * Author: Robert Miller
- * Last Edit: 4/27/16
+ * Last Edit: 5/10/16
  *
  * An implementation of the ImageResource class defined in imageResource.hpp
  */
@@ -30,7 +30,6 @@ uint8_t ImageResource::getFPS() const
     { return fps; }
 
 
-// TODO convert from BGR to RGB color space
 Image ImageResource::getFrame(uint16_t index) const
     { return index < frames.size() ? Image(frames[index].ptr()) : nullptr; }
 
