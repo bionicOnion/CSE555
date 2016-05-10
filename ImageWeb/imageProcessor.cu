@@ -127,7 +127,8 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_STENCIL_TEST);
 	glEnable(GL_TEXTURE_2D);
-	glViewport(0, 0, dims.x / 2, dims.y / 2);
+	glPixelStorei(GL_PACK_ALIGNMENT, 1);
+	glViewport(0, 0, dims.x, dims.y);
 
 	// Compile and install the shaders for use with OpenGL
 	GLuint vertShader, fragShader, glProgram;
@@ -184,7 +185,7 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 	glBindVertexArray(dev_vao);
 	glGenBuffers(1, &dev_vertexBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, dev_vertexBuffer);
-	glNamedBufferStorage(dev_vertexBuffer, numPoints * 10 * sizeof(Triangle), NULL, 0);
+	glNamedBufferStorage(dev_vertexBuffer, dims.x * dims.y / 2 * sizeof(Triangle), NULL, 0); // TODO
 	glRetCode = glGetError();
 	if (glRetCode != GL_NO_ERROR)
 		return PRINT_ERR_MSG_GL(glRetCode);
@@ -296,7 +297,7 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 		CUDA_CALL(cudaMemset(dev_pointHistoricity, 0, imgBufSize * sizeof(channel_t)));
 		samplePoints<<<blockSizePoints, threadSize>>>(dev_distr, dev_distrCols, dims,
 			dev_curandStates, dev_pointBuf, numPoints, dev_pointHistoricity);
-
+		
 		if (params.timing)
 			CUDA_CALL(cudaEventRecord(pointsSampled, 0));
 

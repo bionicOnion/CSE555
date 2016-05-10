@@ -108,7 +108,7 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
 
 			try
 			{
-				params->historicityWeight = std::stof(argv[i]);
+				params->historicityWeight = std::stod(argv[i]);
 			}
 			catch (std::invalid_argument)
 			{
@@ -136,7 +136,7 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
 
 			try
 			{
-				params->intensityEdgeWeight = std::stof(argv[i]);
+				params->intensityEdgeWeight = std::stod(argv[i]);
 			}
 			catch (std::invalid_argument)
 			{
@@ -161,7 +161,7 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
 
 			try
 			{
-				params->pointRatio = std::stof(argv[i]);
+				params->pointRatio = std::stod(argv[i]);
 			}
 			catch (std::invalid_argument)
 			{
