@@ -155,8 +155,203 @@
     As written, this application has several dependencies. In particular, a user needs to have
     libraries for OpenCV 3.0 and a CUDA-capable device and driver with support for compute level 2.0
     or higher and OpenGL 4.5.
+
+    <h4>Generating the Distribution</h4>
+
+    Distribution generation is done in multiple stages. Firstly, image intensities and edge data are
+    calculated (this code is simple enough that I have elected not to duplicate it here); these
+    channels are then blended with the historicity data from any prior frames:
     <br><br>
-    <b>TODO</b>
+    <div class="codeWrapper">
+<code>distribution[offset] = (intEdgeWeight*intensity[offset] + (1 - intEdgeWeight)*edges[offset]) / 255;
+distribution[offset] = historicityWeight*historicity[offset] + (1 - historicityWeight)*distribution[offset];</code>
+    </div>
+    <br>
+    This distribution must then be converted into a format that will be useful for point
+    sampling&mdash;the CDFs for each row and for all columns must be calculated. Because prefix sum
+    calculation on a GPU turned out to be a surpisingly difficult problem to get working in the
+    general case, I chose to rely on the implementation provided in CUDA's Thrust library (even
+    though this implementation won't be able to perform as quickly as a custom-made prefix sum
+    calculator). The code for CDF generation is as follows:
+    <br><br>
+    <div class="codeWrapper">
+<code>thrust::device_ptr&lt;<span class="reserved">float</span>&gt; t_distr = thrust::device_pointer_cast(dev_distr);
+thrust::device_ptr&lt;<span class="reserved">float</span>&gt; t_distrRowSums = thrust::device_pointer_cast(dev_distrRowSums);
+thrust::device_ptr&lt;<span class="reserved">float</span>&gt; t_distrCols = thrust::device_pointer_cast(dev_distrCols);
+<span class="reserved">for</span> (<span class="reserved">auto</span> i = 0; i &lt; dims.y - 1; ++i)
+  thrust::exclusive_scan(t_distr + dims.x*i, t_distr + dims.x*i + dims.x, t_distr + dims.x*i);
+copyRowSums&lt;&lt;&lt;blockSize, threadSize&gt;&gt;&gt;(dev_distr, dev_distrRowSums, dims);
+thrust::exclusive_scan(t_distrRowSums, t_distrRowSums + dims.y, t_distrCols);
+normalizeCDF&lt;&lt;&lt;blockSize, threadSize&gt;&gt;&gt;(dev_distr, dev_distrRowSums, dev_distrCols, dims);
+<span class="reserved">float</span> one = 1;
+CUDA_CALL(cudaMemcpy(dev_distrCols + dims.y - 1, &amp;one, <span class="reserved">sizeof</span>(one), cudaMemcpyHostToDevice));</code>
+    </div>
+    <br>
+
+    <h4>Sampling Points</h4>
+
+    Given the distribution generated in the previous step, sampling points is strightforward:
+    <br><br>
+    <div class="codeWrapper">
+<code>curandState state = randStates[offset];
+<span class="reserved">auto</span> randX = 1 - curand_uniform(&amp;state);
+<span class="reserved">auto</span> randY = 1 - curand_uniform(&amp;state);
+randStates[offset] = state;
+
+pointBuf[offset].y = binarySearch(colDist, dims.y, 0, dims.y, randY);
+pointBuf[offset].x = binarySearch(rowDist + ((<span class="reserved">uint16_t</span>)pointBuf[offset].y * dims.x), dims.x, 0, dims.x, randX);</code>
+    </div>
+    <br>
+    This first selects a row using the column distribution, then searches within that row's
+    distribution for the appropriate point, storing the results into a prepared buffer. The number
+    of instances of the point sampling kernel is based on the point ratio parameter specified by the
+    user and the total number of pixels in the input image.
+
+    <h4>Tesselation</h4>
+
+    Tesselation is done in two phases: firstly, the Voronoi diagram (an indication of which critical
+    point is closest to a given pixel for every pixel) for the sampled points is generated; this
+    diagram is then used to generate a triangulation. In particular, the vertices in the Voronoi
+    diagram (pixel corners which are 4-connected with 3 or 4 regions) can be used to determine which
+    points should be connected with triangles: if such a vertex exists for three points, then those
+    three points must be closer together than any other set of three points, and so a triangle can
+    be created at that point (with four neighboring points, two such triangles are generated).
+    <br><br>
+    Although papers exist discussing optimal techniques for computing Voronoi diagrams with the GPU,
+    I elected to use a na&iuml;ve implementation to save development time and effort&mdash;for every
+    pixel, I iterate over the set of all points and store the index corresponding to the closest one
+    into the Voronoi diagram.
+    <br><br>
+    <div class="codeWrapper">
+<code><span class="reserved">for</span> (<span class="reserved">uint32_t</span> i = 0; i < numPoints; ++i)
+{
+  deltaX = points[i].x - x;
+  deltaY = points[i].y - y;
+  dist = deltaX*deltaX + deltaY*deltaY;
+  <span class="reserved">if</span> (dist < minDist)
+  {
+    minDist = dist;
+    bestIdx = i;
+  }
+}
+voronoi[offset] = bestIdx;</code>
+    </div>
+    <br>
+    Using this diagram, Voronoi vertices are identified by counting neighbors...
+    <br><br>
+    <div class="codeWrapper">
+<code><span class="reserved">if</span> (voronoi[offset] == voronoi[offset + dims.x + 1] || voronoi[offset + 1] == voronoi[offset + dims.x])
+  <span class="reserved">return</span>;
+
+<span class="reserved">uint8_t</span> numNeighbors = 1;
+<span class="reserved">uint32_t</span> neighbors[4];
+neighbors[0] = voronoi[offset];
+<span class="reserved">if</span> (voronoi[offset] != voronoi[offset + 1])
+{
+  neighbors[numNeighbors] = voronoi[offset + 1];
+  ++numNeighbors;
+}
+<span class="reserved">if</span> (voronoi[offset] != voronoi[offset + dims.x])
+{
+  neighbors[numNeighbors] = voronoi[offset + dims.x];
+  ++numNeighbors;
+}
+<span class="reserved">if</span> (voronoi[offset + dims.x] != voronoi[offset + dims.x + 1])
+{
+  neighbors[numNeighbors] = voronoi[offset + dims.x + 1];
+  ++numNeighbors;
+}</code>
+    </div>
+    <br>
+    ...and then triangles are generated where appropriated (with points specified in
+    counter-clockwise order per OpenGL's standard behavior).
+    <br><br>
+    <div class="codeWrapper">
+<code><span class="reserved">if</span> (numNeighbors == 3)
+{
+  <span class="reserved">auto</span> index = atomicAdd(numTriangles, 1);
+
+  triangulation[index].p1 = points[neighbors[0]];
+  triangulation[index].p2 = points[neighbors[2]];
+  triangulation[index].p3 = points[neighbors[1]];
+}
+<span class="reserved">else if</span> (numNeighbors == 4)
+{
+  <span class="reserved">auto</span> index = atomicAdd(numTriangles, 2);
+
+  triangulation[index].p1 = points[neighbors[0]];
+  triangulation[index].p2 = points[neighbors[2]];
+  triangulation[index].p3 = points[neighbors[1]];
+
+  triangulation[index + 1].p1 = points[neighbors[2]];
+  triangulation[index + 1].p2 = points[neighbors[3]];
+  triangulation[index + 1].p3 = points[neighbors[1]];
+}</code>
+    </div>
+    <br>
+    This tessellation is performed directly into a buffer shared between CUDA and OpenGL, meaning
+    that these triangles need only to have colorings assigned before being ready to be drawn. This
+    buffer sharing is accomplished by mapping an OpenGL buffer for use with CUDA in the following
+    manner (some code has been omitted to save space):
+    <br><br>
+    <div class="codeWrapper">
+<code>cudaGraphicsMapResources(1, &amp;dev_vertBufCUDA);
+Triangle* dev_triangleBuf;
+<span class="reserved">size_t</span> numTriangleBytes;
+cudaGraphicsResourceGetMappedPointer((<span class="reserved">void</span>**)&amp;dev_triangleBuf, &amp;numTriangleBytes, dev_vertBufCUDA));
+computeVoronoi&lt;&lt;&lt;blockSize, threadSize&gt;&gt;&gt;(dev_voronoi, dims, dev_pointBuf, numPoints);
+constructTriangulation&lt;&lt;&lt;blockSize, threadSize&gt;&gt;&gt;(dev_voronoi, dims, dev_pointBuf, dev_triangleBuf, dev_numTriangles);
+cudaGraphicsUnmapResources(1, &amp;dev_vertBufCUDA);</code>
+    </div>
+
+    <h4>Drawing</h4>
+
+    The final step in the pipeline is arguably the simplest, as most of the hard work has already
+    been accomplished by the CUDA portions of the pipeline in getting all of the data into the
+    shared vertex buffer. As such, the actual drawing code is only a few lines long:
+    <br><br>
+    <div class="codeWrapper">
+<code>glBindFramebuffer(<span class="reserved">GL_FRAMEBUFFER</span>, dev_frameBuf);
+glClearBufferfv(<span class="reserved">GL_COLOR</span>, 0, background);
+glUseProgram(glProgram);
+glDrawArrays(<span class="reserved">GL_TRIANGLES</span>, 0, host_numTriangles * 3);
+
+glReadBuffer(<span class="reserved">GL_COLOR_ATTACHMENT0</span>);
+glReadPixels(0, 0, dims.x, dims.y, <span class="reserved">GL_BGR</span>, <span class="reserved">GL_UNSIGNED_BYTE</span>, host_imgBuf);</code>
+    </div>
+    <br>
+    The source for the shaders used in the call to <code>glDrawArrays</code> is equally simple. The vertex shader is the following:
+    <br><br>
+<div class="codeWrapper">
+<code>#version 450 core
+<span class="reserved">layout</span> (<span class="reserved">location</span> = 0) <span class="reserved">in vec2</span> position;
+<span class="reserved">layout</span> (<span class="reserved">location</span> = 1) <span class="reserved">in vec3</span> color;
+<span class="reserved">out vec3</span> vs_color;
+<span class="reserved">void main</span>(<span class="reserved">void</span>)
+{
+  gl_Position = <span class="reserved">vec4</span>(position.x, position.y, 0, 1);
+  vs_color = color;
+}</code>
+    </div>
+    <br>                                                 
+    The fragment shader is as follows:
+    <br><br>
+    <div class="codeWrapper">
+<code>#version 450 core
+<span class="reserved">in vec3</span> vs_color;
+<span class="reserved">out vec3</span> color;
+<span class="reserved">void main</span>(<span class="reserved">void</span>)
+{
+  color = vs_color;
+}</code>
+    </div>
+    <br>
+    Because CUDA was able to supply the vertex and color data in the shared buffer (the format of
+    which was defined while initalizing the sytem) and the extremely simple shader pipeline has
+    already been compiled into <code>glProgram</code>, these few lines are all that is necessary to
+    compile the image into a pre-prepared framebuffer and then move the results back to the CPU to
+    be used as is appropriate (e.g. saving/displaying the image or appending it as a frame to the
+    end of a video).
   </p>
 
   <hr>
@@ -346,7 +541,17 @@
     <hr class="invisible">
 
     <br><br>
-    <b>TODO</b> talk about triangle clustering in high-detail/bright areas
+    In many of the images above, the tendency for triangles to cluster together in bright or
+    high-detail areas is quite clear (especially in the images of the Maine coastline). Even
+    without color data, many of the images are still recognizable by virtue of this clustering,
+    most noticeably in the two images generated from the formal portait. However, this clustering
+    can sometimes serve to rob other elements of the image of any level of detail: although the
+    lower half of the first image of Maine's coast is decidedly darker and features fewer
+    high-frequency edges than the top half, the specularity and rippling in the ocean take
+    precedence over just about everything else in the scene with respect to point placement. For
+    this reason, low-contrast or dark imagery doesn't do well with the pipeline as it's been
+    implemented: foliage in particular runs the risk of becoming an indistinct mass (such as in the
+    bottom left corner of the image of Mackworth island).
     <br><br>
     One of the things that caught me by surprise was the potential for the images produced by the
     system to fall suddenly and dramatically into the uncanny valley. Images of faces rapidly become
@@ -356,6 +561,13 @@
     images of this phenomenon in this report, but I found that a point ratio of somewhere around
     0.03 (meaning that around 3% of pixels will be sampled as points for triangulation) was the
     lower threshold at which images moved from abstract to uncanny.
+    <br><br>
+    Overall, however, the tools exposed by the application allow for a broad range of expressiveness
+    and tuning, and (with some work) it's usually possible to make an input image look good with at
+    least one of the coloring modes. Ultimately, this was the broad-strokes goal of this project:
+    the finished pipeline is a tool for quickly and easily making artistic renderings of input
+    images without losing all of the granular control that comes from using more advanced tools such
+    as Photoshop.
 
     <h4>Videos</h4>
 
