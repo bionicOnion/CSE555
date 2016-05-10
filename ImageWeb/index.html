@@ -19,7 +19,7 @@
     <a href="http://bioniconion.github.io/CSE555/ImageWeb/proposal.html">Project Proposal</a>
     <br>
     <br>
-    <img src="images/blautopf.jpeg" alt="CSE 555: Final Project" />
+    <img src="images/out/blautopf.jpeg" alt="CSE 555: Final Project" />
     <br>
   </div>
 
@@ -145,13 +145,18 @@
   <!-- IMPLEMENTATION -->
   <h3>Implementation</h3>
   <p>
-    All code for the project can be found in my repository <a
+    Due to the complex nature of this project (the file containing the pipeline alone is over 700
+    lines long), this section will skip over many of the salient details of the system. In
+    particular, I will only be discussing the implementation of the central portion of the pipeline,
+    skipping over all details about setting up or managing state and resources as well as all error
+    handling. Those interested in more detail can find the full source code for the project <a
     href="https://github.com/bionicOnion/CSE555/tree/master/ImageWeb">here</a>.
-
-    Minimum specs:
-    OpenCV 3.0
-    Device with CUDA 2.0 capabilities
-    OpenGL 4.5
+    <br><br>
+    As written, this application has several dependencies. In particular, a user needs to have
+    libraries for OpenCV 3.0 and a CUDA-capable device and driver with support for compute level 2.0
+    or higher and OpenGL 4.5.
+    <br><br>
+    <b>TODO</b>
   </p>
 
   <hr>
@@ -166,14 +171,182 @@
     useful as a guide to what the system is capable of, including both its basic functionality and
     the set of options exposed to users (explored in more detail in the Parameterization section
     below).
+    <br><br>
+    All of the images can be clicked to open larger versions.
 
     <h4>Images</h4>
 
-    <b>TODO</b>
-    Use the image of Pless, an image of Brookings, Blautopf, the image from formal, high-contrast
-    black and white images (from Photo I and II?), low-contrast images, etc.
-    Use a variety of different methodologies for creating the images (varied coloring modes, point
-    densities, edge to intensity weightings, etc.)
+    By default, the system will use a standard ratio of sampled points to overall pixels of 0.005,
+    a weighting of 0.005 for edge data versus intensity data, a white foreground color, and a black
+    background color. The results of this processing are as follows:
+
+    <hr class="invisible">
+    <figure>
+      <a href="images/src/pless.jpeg">
+        <img src="images/src/pless.jpeg" alt="Professor Pless" />
+      </a>
+      <figcaption>Input image of Professor Pless</figcaption>
+    </figure>
+    <figure>
+      <a href="images/out/pless_default.jpeg">
+        <img src="images/out/pless_default.jpeg" alt="Professor Pless (default processing)" />
+      </a>
+      <figcaption>The output image after undergoing default processing</figcaption>
+    </figure>
+    <hr class="invisible">
+
+    In the image above, the contours formed by the triangles roughly mimic the input image (although
+    someone unfamiliar with the original image would be unlikely to recognize Professor Pless in the
+    triangulated render).
+    <br><br>
+    However, each of the elements listed above (as well as the coloring mode used by the system) can
+    be tweaked by the user, allowing the same input image to generate the following output:
+
+    <hr class="invisible">
+    <figure>
+      <a href="images/out/pless_solidColors.jpeg">
+        <img src="images/out/pless_solidColors.jpeg" alt="Modified foreground/background colors" />
+      </a>
+      <figcaption>The output image after undergoing default processing</figcaption>
+    </figure>
+    <figure>
+      <a href="images/out/pless_centroid_highRatio.jpeg">
+        <img src="images/out/pless_centroid_highRatio.jpeg" alt="Centroid-based coloring" />
+      </a>
+      <figcaption>The output image after undergoing default processing</figcaption>
+    </figure>
+    <hr class="invisible">
+
+    In addition to the obvious differences in tessellation granularity and coloring, the image on
+    the left highlights the influence that random sampling has on the output produced: aside from
+    modifying the foreground and background colors, the settings used were otherwise identical to
+    the image above, but some points are in noticeably different positions (particularly towards
+    the top left of the image). As was noted above, variations to a wide variety of factors can have
+    a dramatic impact on the images produced by the pipeline; the following images demonstrate some
+    of the effects that can be achieved.
+
+    <hr class="invisible">
+    <figure>
+      <a href="images/src/boat.jpeg">
+        <img src="images/src/boat.jpeg" alt="Boat" />
+      </a>
+      <figcaption>Input image of a beached boat</figcaption>
+    </figure>
+    <figure>
+      <a href="images/out/boat.jpeg">
+        <img src="images/out/boat.jpeg" alt="Boat" />
+      </a>
+      <figcaption>Resulting image using color sampling</figcaption>
+    </figure>
+    <hr class="invisible">
+
+    <hr class="invisible">
+    <figure>
+      <a href="images/src/blautopf.jpeg">
+        <img src="images/src/blautopf.jpeg" alt="Blautopf" />
+      </a>
+      <figcaption>Input image of Blautopf in Blaubeuren, Germany</figcaption>
+    </figure>
+    <figure>
+      <a href="images/out/blautopf.jpeg">
+        <img src="images/out/blautopf.jpeg" alt="Blautopf" />
+      </a>
+      <figcaption>Resulting image using centroid sampling</figcaption>
+    </figure>
+    <hr class="invisible">
+
+    <hr class="invisible">
+    <figure>
+      <a href="images/src/formal.jpeg">
+        <img src="images/src/formal.jpeg" alt="Formal" />
+      </a>
+      <figcaption>Input image of a formal portrait</figcaption>
+    </figure>
+    <figure>
+      <a href="images/out/formal_highDensity.jpeg">
+        <img src="images/out/formal_highDensity.jpeg" alt="Formal (high density)" />
+      </a>
+      <figcaption>Resulting image using a high point ratio</figcaption>
+    </figure>
+    <hr class="invisible">
+
+        <hr class="invisible">
+    <figure>
+      <a href="images/src/formal.jpeg">
+        <img src="images/src/formal.jpeg" alt="Formal" />
+      </a>
+      <figcaption>Input image of a formal portrait</figcaption>
+    </figure>
+    <figure>
+      <a href="images/out/formal_lowDensity.jpeg">
+        <img src="images/out/formal_lowDensity.jpeg" alt="Formal (low density)" />
+      </a>
+      <figcaption>Resulting image using a low point ratio</figcaption>
+    </figure>
+    <hr class="invisible">
+
+    <hr class="invisible">
+    <figure>
+      <a href="images/src/brookings.jpeg">
+        <img src="images/src/brookings.jpeg" alt="Brookings" />
+      </a>
+      <figcaption>Input image Brookings Hall</figcaption>
+    </figure>
+    <figure>
+      <a href="images/out/brookings.jpeg">
+        <img src="images/out/brookings.jpeg" alt="Brookings" />
+      </a>
+      <figcaption>Resulting image using centroid sampling and a low point ratio</figcaption>
+    </figure>
+    <hr class="invisible">
+
+    <hr class="invisible">
+    <figure>
+      <a href="images/src/maine.jpeg">
+        <img src="images/src/maine.jpeg" alt="Maine" />
+      </a>
+      <figcaption>Input image of the Maine coastline</figcaption>
+    </figure>
+    <figure>
+      <a href="images/out/maine.jpeg">
+        <img src="images/out/maine.jpeg" alt="Maine" />
+      </a>
+      <figcaption>Resulting image using color sampling</figcaption>
+    </figure>
+    <hr class="invisible">
+
+    <hr class="invisible">
+    <figure>
+      <a href="images/src/foliage.jpeg">
+        <img src="images/src/foliage.jpeg" alt="Foliage" />
+      </a>
+      <figcaption>Input image of fall foliage</figcaption>
+    </figure>
+    <figure>
+      <a href="images/out/foliage.jpeg">
+        <img src="images/out/foliage.jpeg" alt="Foliage" />
+      </a>
+      <figcaption>Resulting image using centroid sampling</figcaption>
+    </figure>
+    <hr class="invisible">
+
+    <hr class="invisible">
+    <figure>
+      <a href="images/src/mackworth.jpeg">
+        <img src="images/src/mackworth.jpeg" alt="Mackworth" />
+      </a>
+      <figcaption>Input image of Mackworth Island in Portland, Maine</figcaption>
+    </figure>
+    <figure>
+      <a href="images/out/mackworth.jpeg">
+        <img src="images/out/mackworth.jpeg" alt="Mackworth" />
+      </a>
+      <figcaption>Resulting image using color sampling</figcaption>
+    </figure>
+    <hr class="invisible">
+
+    <br><br>
+    <b>TODO</b> talk about triangle clustering in high-detail/bright areas
     <br><br>
     One of the things that caught me by surprise was the potential for the images produced by the
     system to fall suddenly and dramatically into the uncanny valley. Images of faces rapidly become
