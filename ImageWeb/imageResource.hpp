@@ -25,6 +25,7 @@ class ImageResource
 {
 public:
 	explicit ImageResource(InputType type);
+	explicit ImageResource(InputType type, uint8_t frameRate);
 
     uint16_t getWidth() const;
     uint16_t getHeight() const;

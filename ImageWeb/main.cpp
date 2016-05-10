@@ -1,7 +1,7 @@
 /*
  * main.cpp
  * Author: Robert Miller
- * Last Edited: 5/9/16
+ * Last Edited: 5/10/16
  *
  * TODO
  */
@@ -33,7 +33,7 @@ int main(int argc, char** argv)
         return retCode;
 
     // Perform processing on the input image/video
-    ImageResource output(params.inputType);
+    ImageResource output(params.inputType, input.getFPS());
     retCode = processImageResource(input, output, params);
     if (retCode != SUCCESS)
         return retCode;

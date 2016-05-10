@@ -18,6 +18,11 @@ ImageResource::ImageResource(InputType type) :
 {}
 
 
+ImageResource::ImageResource(InputType type, uint8_t frameRate) :
+    type(type), fps(frameRate)
+{}
+
+
 uint16_t ImageResource::getWidth() const
     { return frames.size() > 0 ? frames[0].cols : 0; }
 
@@ -68,7 +73,12 @@ ReturnCode ImageResource::display(void) const
 	}
 	else if (type == InputType::Video)
 	{
-		return PRINT_ERR_MSG(NOT_YET_IMPLEMENTED);
+        cv::namedWindow("Video");
+        for (auto i = 0; i < frames.size(); ++i)
+        {
+            imshow("Video", frames[i]);
+            cv::waitKey(1000 / fps);
+        }
 	}
 	else
 		return PRINT_ERR_MSG(UNRECOGNIZED_INPUT_TYPE);
@@ -101,7 +111,7 @@ ReturnCode ImageResource::load(std::string filename)
 		frames.resize(static_cast<size_t>(textureImageResource.get(CV_CAP_PROP_FRAME_COUNT)));
 
         // Load the ImageResource into a vector of frames
-        auto framesRead = -1;
+        auto framesRead = 0;
         while (textureImageResource.read(frames[framesRead]))
             ++framesRead;
 
@@ -117,6 +127,9 @@ ReturnCode ImageResource::load(std::string filename)
 
 ReturnCode ImageResource::save(std::string filename)
 {
+    if (frames.size() < 1)
+        return PRINT_ERR_MSG(RESOURCE_UNINITIALIZED);
+
     if (type == InputType::Image)
     {
 		if (!cv::imwrite(filename, frames[0]))
@@ -124,7 +137,11 @@ ReturnCode ImageResource::save(std::string filename)
     }
     else if (type == InputType::Video)
 	{
-		return PRINT_ERR_MSG(NOT_YET_IMPLEMENTED);
+		cv::VideoWriter writer(filename, cv::VideoWriter::fourcc('F','M','P','4'), fps,
+            frames[0].size());
+		writer.set(cv::VIDEOWRITER_PROP_QUALITY, 100);
+        for (auto i = 0; i < frames.size(); ++i)
+            writer << frames[i];
     }
 	else
 		return PRINT_ERR_MSG(UNRECOGNIZED_INPUT_TYPE);

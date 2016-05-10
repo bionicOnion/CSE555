@@ -15,7 +15,7 @@
 // Default parameter values
 const float DEFAULT_POINT_RATIO = 0.005f;
 const float DEFAULT_INTENSITY_EDGE_WEIGHT = 0.005f;
-const float DEFAULT_HISTORICITY_WEIGHT = 0.2f; // TODO
+const float DEFAULT_HISTORICITY_WEIGHT = 0.1f; // TODO
 const ColoringMode DEFAULT_COLORING_MODE = ColoringMode::SolidColors;
 const Color DEFAULT_FOREGROUND = Color { 1, 1, 1 }; // Default to white
 const Color DEFAULT_BACKGROUND = Color { 0, 0, 0 }; // Default to black

@@ -23,6 +23,7 @@
 #include <thrust/device_ptr.h>
 #include <thrust/scan.h>
 
+#include "consoleProgressBar.hpp"
 #include "constants.hpp"
 #include "imageProcessor.hpp"
 #include "util.hpp"
@@ -252,11 +253,16 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 		CUDA_CALL(cudaEventCreate(&end));
 	}
 
+	ConsoleProgressBar pbar("Processing...");
+
 	// Perform processing on the image/video
-	for (auto i = 0; i < input.getFrameCount(); ++i)
+	for (auto idx = 0; idx < input.getFrameCount(); ++idx)
 	{
+		if (params.inputType == InputType::Video && !params.timing)
+			pbar.printProgress((double) idx / input.getFrameCount());
+
 		// Copy input frame to the GPU
-		auto imgPtr = input.getFrame(i);
+		auto imgPtr = input.getFrame(idx);
 		if (imgPtr == nullptr)
 			break;
 		CUDA_CALL(cudaMemcpy(dev_imgBuf, imgPtr, imgBufSize * sizeof(Pixel),
@@ -318,11 +324,6 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 			cudaMemcpyDeviceToHost));
 		CUDA_CALL(cudaGraphicsUnmapResources(1, &dev_vertBufCUDA));
 
-		if (params.debug)
-		{
-			std::cout << "Triangles in frame " << i << ": " << host_numTriangles << std::endl;
-			std::cout << "Triangles/Points = " << 1.0 * host_numTriangles / numPoints << std::endl;
-		}
 		if (params.timing)
 			CUDA_CALL(cudaEventRecord(pointsTesselated, 0));
 
@@ -348,10 +349,16 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
 
 		if (params.timing)
 		{
-			retCode = printTimings(start, distrGenerated, pointsSampled, pointsTesselated, end, i);
+			retCode = printTimings(start, distrGenerated, pointsSampled, pointsTesselated, end, idx);
 			if (retCode != SUCCESS)
 				return retCode;
 		}
+	}
+
+	if (params.inputType == InputType::Video)
+	{
+		pbar.printProgress(1);
+		std::cout << std::endl;
 	}
 
 	// Release resources
@@ -515,7 +522,15 @@ __global__ void samplePoints(float* rowDist, float* colDist, short2 dims,
 		dims.x, randX);
 
 	// 'Paint' the selected point into historicityBuf
-	// TODO
+	const float gaussianFilter[3][3] =
+	{
+		{ 0.0625f, 0.1250f, 0.0625f },
+		{ 0.1250f, 0.2500f, 0.1250f },
+		{ 0.0625f, 0.1250f, 0.0625f },
+	};
+	for (uint16_t i = pointBuf[offset].x - 1, ii = 0; i <= pointBuf[offset].x + 1; ++i, ++ii)
+		for (uint16_t j = pointBuf[offset].y - 1, jj = 0; j <= pointBuf[offset].y + 1; ++j, ++jj)
+			historicityBuf[i + (j * dims.x)] += channel_t(gaussianFilter[ii][jj] * 255);
 }
 
 

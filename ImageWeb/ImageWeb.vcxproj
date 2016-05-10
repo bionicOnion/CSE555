@@ -20,12 +20,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="argParser.cpp" />
+    <ClCompile Include="consoleProgressBar.cpp" />
     <ClCompile Include="imageResource.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="argParser.hpp" />
+    <ClInclude Include="consoleProgressBar.hpp" />
     <ClInclude Include="constants.hpp" />
     <ClInclude Include="imageProcessor.hpp" />
     <ClInclude Include="imageResource.hpp" />

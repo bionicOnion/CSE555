@@ -14,3 +14,6 @@ const uint8_t MAX_PYRAMID_LEVELS = 5;
 const short EDGE_THRESH = 10;
 
 const short MAX_DIM = 640;
+
+const uint8_t DEFAULT_PBAR_WIDTH = 64;
+const uint8_t PERCENT_WIDTH = 10;

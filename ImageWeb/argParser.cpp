@@ -55,13 +55,13 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
         {
 			if (++i >= argc)
 				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
-			params->background.r = std::stoi(argv[i]) / 255.0;
+			params->background.r = float(std::stoi(argv[i]) / 255.0);
 			if (++i >= argc)
 				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
-			params->background.g = std::stoi(argv[i]) / 255.0;
+			params->background.g = float(std::stoi(argv[i]) / 255.0);
 			if (++i >= argc)
 				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
-			params->background.b = std::stoi(argv[i]) / 255.0;
+			params->background.b = float(std::stoi(argv[i]) / 255.0);
         }
         else if (COLORING_MODE_ARGS.find(argv[i]) != COLORING_MODE_ARGS.end())
         {
@@ -88,13 +88,13 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
 			// TODO Handle possible exceptions
 			if (++i >= argc)
 				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
-			params->foreground.r = std::stoi(argv[i]) / 255.0;
+			params->foreground.r = float(std::stoi(argv[i]) / 255.0);
 			if (++i >= argc)
 				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
-			params->foreground.g = std::stoi(argv[i]) / 255.0;
+			params->foreground.g = float(std::stoi(argv[i]) / 255.0);
 			if (++i >= argc)
 				return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
-			params->foreground.b = std::stoi(argv[i]) / 255.0;
+			params->foreground.b = float(std::stoi(argv[i]) / 255.0);
         }
         else if (HELP_ARGS.find(argv[i]) != HELP_ARGS.end())
         {
@@ -108,7 +108,7 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
 
 			try
 			{
-				params->historicityWeight = std::stod(argv[i]);
+				params->historicityWeight = static_cast<float>(std::stod(argv[i]));
 			}
 			catch (std::invalid_argument)
 			{
@@ -136,7 +136,7 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
 
 			try
 			{
-				params->intensityEdgeWeight = std::stod(argv[i]);
+				params->intensityEdgeWeight = static_cast<float>(std::stod(argv[i]));
 			}
 			catch (std::invalid_argument)
 			{
@@ -161,7 +161,7 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
 
 			try
 			{
-				params->pointRatio = std::stod(argv[i]);
+				params->pointRatio = static_cast<float>(std::stod(argv[i]));
 			}
 			catch (std::invalid_argument)
 			{
@@ -229,7 +229,6 @@ ReturnCode validate(ParamBundle* params)
 	if (params->outputFile == "")
     {
         // Build a default name for the output file
-		// TODO clean this up a bit
 		std::istringstream iss(params->inputFile);
 		std::vector<std::string> inputFileNameVec;
 		std::string token;
@@ -237,7 +236,8 @@ ReturnCode validate(ParamBundle* params)
 			inputFileNameVec.push_back(token);
 		if (inputFileNameVec.size() < 2)
 			return PRINT_ERR_MSG(INVALID_ARGUMENT);
-        auto fileExtension = inputFileNameVec[inputFileNameVec.size() - 1];
+        auto fileExtension = params->inputType == InputType::Video
+            ? "mp4" : inputFileNameVec[inputFileNameVec.size() - 1];
         auto fileName = inputFileNameVec[inputFileNameVec.size() - 2];
 		auto strCutIndex = 0;
 		while (fileName[strCutIndex] == '\\' || fileName[strCutIndex] == '/')
