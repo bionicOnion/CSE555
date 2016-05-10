@@ -7,7 +7,7 @@
 </head>
 <body>
   <h1>CSE 555: Final Project</h1>
-  <h2>Automated Generation of Image Webs</h2>
+  <h2>Nonrealistic Rendering with Triangulation</h2>
 
   <h2>Robert Miller</h2>
 
@@ -19,7 +19,7 @@
     <a href="http://bioniconion.github.io/CSE555/ImageWeb/proposal.html">Project Proposal</a>
     <br>
     <br>
-    <img src="images/TODO.jpeg" alt="CSE 555: Final Project" />
+    <img src="images/blautopf.jpeg" alt="CSE 555: Final Project" />
     <br>
   </div>
 
@@ -29,9 +29,26 @@
   <!-- PROJECT OVERVIEW -->
   <h3>Project Overview</h3>
   <p>
-    <b>TODO</b>
+    The original inspiration for this project was <a href="images/projectIdea.jpeg">this image</a>:
+    I intended to generate wireframe-esque "image webs" which conveyed the impression of the
+    low-fequency detail of an image exclusively through the use of solid color lines on solid color
+    backgrounds. Although this functionality is still at the heart of the application which I
+    ultimately developed, experimenting with the finished pipeline and alternative modes of shading
+    the triangles produced by the image processing pipeline broadened the scope of what the
+    application is capable of. Most notably, the pipeline is capable of automated and almost
+    real-time generation of images similar to those produced using <a
+    href="https://studiomoniker.com/projects/delaunay-raster">Delaunay Raster</a> (though the
+    shading is slightly different and hand-placed points will likely be more aesthetically pleasing
+    than randomly sampled ones); an example of this can be seen in the image at the top of the page.
+    Because of this shift, I have rebranded this project from "Image Web Filter" to the more
+    descriptive&mdash;and accurate to the final project&mdash;title given above.
     <br><br>
-    More details can be found in the project proposal page <a
+    Aside from this main goal of nonrealistic rendering, one of the primary focuses of my work was
+    on learning to leverage the GPU to perform hardware-accelerated image processing and rendering.
+    A full description of the technologies used can be found in the Pipeline Description and
+    Implementation sections below.
+    <br><br>
+    Further details are available in the project proposal page <a
     href="http://bioniconion.github.io/CSE555/ImageWeb/proposal.html">here</a>.
     <br><br>
     All of the code written for this project can be found in my repository <a
@@ -89,7 +106,7 @@
         placed, the other of which determines the point location within that row.
       </li>
       <li>
-        <b>Point triangulation</b>&mdash;Points are tesselated using a simplified version of the
+        <b>Point tesselation</b>&mdash;Points are tesselated using a simplified version of the
         algorithm discussed in <a href="http://www.comp.nus.edu.sg/~tants/delaunay2DDownload.html">
         this</a> paper. In particulat, all of the code for transformation to and from discretized
         space has been excluded (as the sampled points are already discrete values), and the final
@@ -143,6 +160,32 @@
   <!-- RESULTS -->
   <h3>Results</h3>
   <p>
+    Due to the highly parameterized nature of the system and the relatively subjective and
+    randomized quality of the output, the results provided in this section only represent the
+    capabilities of this application in the broadest sense. However, these results are still
+    useful as a guide to what the system is capable of, including both its basic functionality and
+    the set of options exposed to users (explored in more detail in the Parameterization section
+    below).
+
+    <h4>Images</h4>
+
+    <b>TODO</b>
+    Use the image of Pless, an image of Brookings, Blautopf, the image from formal, high-contrast
+    black and white images (from Photo I and II?), low-contrast images, etc.
+    Use a variety of different methodologies for creating the images (varied coloring modes, point
+    densities, edge to intensity weightings, etc.)
+    <br><br>
+    One of the things that caught me by surprise was the potential for the images produced by the
+    system to fall suddenly and dramatically into the uncanny valley. Images of faces rapidly become
+    disconcerting when rendered with a high point density using the color sampling mode: the image
+    has a recognizably human shape and coloration, but is distinctly off (in a way that came close
+    to body horror for some of the more extreme examples that I came across). I haven't included any
+    images of this phenomenon in this report, but I found that a point ratio of somewhere around
+    0.03 (meaning that around 3% of pixels will be sampled as points for triangulation) was the
+    lower threshold at which images moved from abstract to uncanny.
+
+    <h4>Videos</h4>
+
     <b>TODO</b>
   </p>
 
@@ -169,8 +212,8 @@
     <br><br>
     The full specifications of the benchmarking system are as follows:
     <ul>
-      <li>CPU: Intel Core i7 3770k @ 3.2 GHz</li>
-      <li>GPU: Geforce GTX 670 @ 915 MHz with 2 GB VRAM</li>
+      <li>CPU: Intel Core i7 3770K @ 3.5 GHz</li>
+      <li>GPU: Geforce GTX 670 @ 941 MHz with 2 GB VRAM</li>
       <li>RAM: 16 GB DDR3 @ 2133 MHz</li>
     </ul>
     <b>TODO</b>
@@ -269,15 +312,6 @@
     sampled on existing edges (since these tend to be the most recognizable featrues of images),
     but with the added feature of drawing from a wider range of possible values (as low-frequency
     edge data appears as a sort of 'smear' when viewed at the original resolution of the image).
-
-    <h4>Custom Prefix-Sum Calculator</h4>
-    For the sake of time&mdash;since prefix-sum calculation for arbitrarily sized buffers turned out
-    to be an unexpectedly hard problem to compute efficiently on a GPU&mdash;I elected to use an
-    out-of-the-box solution from Nvidia's CUDA sample code. However, as is usually the case, it
-    would be possible to squeeze more performance out of the pipeline by building a custom solution
-    which is able to leverage the specific structure of the problem at hand. In addition, working on
-    implementing my own version of the prefix-sum algorithm would be useful as a learning tool for
-    becoming more familiar and comfortable with GPGPU algorithm design and development.
 
     <h4>Improved Voronoi Diagram Generator</h4>
     For the sake of simplicity, my current implementation uses a na&iuml;ve algorithm for computing
