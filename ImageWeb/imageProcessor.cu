@@ -135,6 +135,17 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
         printDeviceData(prop);
     }
 
+	// Set up OpenGL with CUDA interoperability
+	int argc = 1;
+	char* argv = "";
+	glutInit(&argc, &argv);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
+	glutInitWindowSize(1, 1);
+	auto glutWindow = glutCreateWindow("Context Window");
+	glutHideWindow();
+	glewInit();
+	CUDA_CALL(cudaGLSetGLDevice(cudaDeviceHandle));
+
     // Allocate host memory
     auto host_imgBuf = reinterpret_cast<Image>(malloc(imgBufSize * sizeof(Pixel)));
     uint32_t host_numTriangles;
@@ -174,17 +185,6 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
         CUDA_CALL(cudaEventCreate(&end));
     }
 
-    // Set up OpenGL with CUDA interoperability
-    int argc = 1;
-    char* argv = "";
-    glutInit(&argc, &argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-    glutInitWindowSize(1, 1);
-    auto glutWindow = glutCreateWindow("Context Window");
-    glutHideWindow();
-    glewInit();
-    CUDA_CALL(cudaGLSetGLDevice(cudaDeviceHandle));
-
     // Set up assorted OpenGL state
     const GLfloat background[] =
     { params.background.r, params.background.g, params.background.b, 1.0f };
@@ -193,9 +193,6 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_STENCIL_TEST);
     glEnable(GL_TEXTURE_2D);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glEnable(GL_LINE_SMOOTH);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glViewport(0, 0, dims.x, dims.y);
 
