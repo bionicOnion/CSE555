@@ -1,5 +1,11 @@
 /*
- * TODO
+ * util.hpp
+ *
+ * Author: Robert Miller
+ * Last Edit: 5/10/16
+ *
+ * An assortment of utility functions primarily useful for debugging or (int the case of macros)
+ *   simplifying error handling and reporting
  */
 
 

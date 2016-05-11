@@ -4,7 +4,10 @@
  * Author: Robert Miller
  * Last Edit: 5/10/16
  *
- * TODO Fill in a description of the class
+ * ImageResource is a class designed to abstract away the differences between image and video data.
+ *   In particular, an ImageResource allows an image to be treated externally as a one-frame video
+ *   while internally differentiating between the two content types for the purposes of saving,
+ *   loading, and displaying the results.
  */
 
 
@@ -24,8 +27,8 @@
 class ImageResource
 {
 public:
-	explicit ImageResource(InputType type);
-	explicit ImageResource(InputType type, uint8_t frameRate);
+    explicit ImageResource(InputType type);
+    explicit ImageResource(InputType type, uint8_t frameRate);
 
     uint16_t getWidth() const;
     uint16_t getHeight() const;

@@ -1,5 +1,11 @@
 /*
- * TODO
+ * types.hpp
+ *
+ * Author: Robert Miller
+ * Last Edit: 5/10/16
+ *
+ * Defines the various types used throughout the project, including types for handling image data,
+ *   interpreting command-line parameters cleanly, and interpreting/reporting internal errors.
  */
 
 
@@ -23,9 +29,9 @@ typedef channel_t* ChannelBuf;
 
 typedef struct
 {
-	float r;
-	float g;
-	float b;
+    float r;
+    float g;
+    float b;
 } Color;
 
 
@@ -49,8 +55,8 @@ typedef struct
 // Parameter types
 enum ColoringMode
 {
-	BlendedColor,
-	CentroidColor,
+    BlendedColor,
+    CentroidColor,
     PixelColors,
     SolidColors,
 };

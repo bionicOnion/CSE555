@@ -1,9 +1,13 @@
 /*
  * main.cpp
- * Author: Robert Miller
- * Last Edited: 5/10/16
  *
- * TODO
+ * Author: Robert Miller
+ * Last Edit: 5/10/16
+ *
+ * The main entry point for the application. Although most of the heavy lifting is done in the
+ *   image processor, the main function ultimately coordinates the four major steps in the
+ *   lifetime of the application: parsing commands, loading the input file, generating the
+ *   rendered image, and saving/displaying that rendered image.
  */
 
 
@@ -23,8 +27,8 @@ int main(int argc, char** argv)
     if (retCode != SUCCESS)
         return retCode;
 
-	if (params.debug)
-		printParams(&params);
+    if (params.debug)
+        printParams(&params);
 
     // Load the specified image/video
     ImageResource input(params.inputType);

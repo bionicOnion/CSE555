@@ -1,5 +1,10 @@
 /*
- * TODO
+ * constants.cpp
+ *
+ * Author: Robert Miller
+ * Last Edit: 5/10/16
+ *
+ * Defines a variety of compile-time constants used throughout the application
  */
 
 

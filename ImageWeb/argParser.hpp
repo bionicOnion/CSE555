@@ -1,5 +1,14 @@
 /*
- * TODO
+ * argParser.hpp
+ *
+ * Author: Robert Miller
+ * Last Edit: 5/10/16
+ *
+ * The parseArguments function is resposible for reading the arguments provided on the command line
+ *   and putting the relevant information into a ParamBundle for ease of use elsewhere in the
+ *   application. This file contains the signature for that function, a function for displaying the
+ *   parameters after parsing has been completed, and a set of definitions for both argument flags
+ *   and default values (where applicable).
  */
 
 
@@ -15,7 +24,7 @@
 // Default parameter values
 const float DEFAULT_POINT_RATIO = 0.005f;
 const float DEFAULT_INTENSITY_EDGE_WEIGHT = 0.005f;
-const float DEFAULT_HISTORICITY_WEIGHT = 0.1f; // TODO
+const float DEFAULT_HISTORICITY_WEIGHT = 0.1f;
 const ColoringMode DEFAULT_COLORING_MODE = ColoringMode::SolidColors;
 const Color DEFAULT_FOREGROUND = Color { 1, 1, 1 }; // Default to white
 const Color DEFAULT_BACKGROUND = Color { 0, 0, 0 }; // Default to black
