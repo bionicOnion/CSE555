@@ -101,7 +101,7 @@ ReturnCode printErrorMsg(ReturnCode errCode, std::string file, int lineNum)
         break;
     }
 
-    return NOT_YET_IMPLEMENTED; // TODO return errCode;
+    return errCode;
 }
 
 

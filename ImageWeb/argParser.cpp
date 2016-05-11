@@ -90,7 +90,6 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
         }
         else if (FOREGROUND_COLOR_ARGS.find(argv[i]) != FOREGROUND_COLOR_ARGS.end())
         {
-            // TODO Handle possible exceptions
             if (++i >= argc)
                 return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
             params->foreground.r = float(std::stoi(argv[i]) / 255.0);
