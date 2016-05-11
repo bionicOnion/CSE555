@@ -13,7 +13,6 @@
 // OpenCV
 #include <opencv2/opencv.hpp>
 
-#include "constants.hpp"
 #include "types.hpp"
 #include "util.hpp"
 

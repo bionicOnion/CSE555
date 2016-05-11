@@ -75,9 +75,7 @@ ReturnCode parse(ParamBundle* params, int argc, char** argv)
             if (++i >= argc)
                 return PRINT_ERR_MSG(INSUFFICIENT_ARGS);
 
-            if (BLENDED_COLORING_MODE.find(argv[i]) != BLENDED_COLORING_MODE.end())
-                params->mode = ColoringMode::BlendedColor;
-            else if (CENTROID_COLORING_MODE.find(argv[i]) != CENTROID_COLORING_MODE.end())
+            if (CENTROID_COLORING_MODE.find(argv[i]) != CENTROID_COLORING_MODE.end())
                 params->mode = ColoringMode::CentroidColor;
             else if (PIXEL_COLORING_MODE.find(argv[i]) != PIXEL_COLORING_MODE.end())
                 params->mode = ColoringMode::PixelColors;
@@ -264,7 +262,6 @@ void printUsage(std::string programName)
     std::cout << "Optional Parameters:" << std::endl;
     std::cout << "  Background Color:                [-b/--background r g b]" << std::endl;
     std::cout << "  Coloring Mode:                   [-c/--coloringMode]" << std::endl;
-    std::cout << "    [b/blend]: Similar to Pixel Mode, but with filled triangles" << std::endl;
     std::cout << "    [c/centroid]: Filled triangles with color sampled from centroid" << std::endl;
     std::cout << "    [p/pix/pixel]: Foreground color is sampled from input image" << std::endl;
     std::cout << "    [s/solid]: Foreground/background colors are user-specified" << std::endl;
@@ -281,28 +278,38 @@ void printUsage(std::string programName)
 
 void printParams(ParamBundle* params)
 {
-
     // Determine the selected coloring mode
     std::string mode;
-    if (params->mode == ColoringMode::BlendedColor)
-        mode = "Blended Colors";
-    else if (params->mode == ColoringMode::CentroidColor)
+    switch (params->mode)
+    {
+    case ColoringMode::CentroidColor:
         mode = "Centroid Color";
-    else if (params->mode == ColoringMode::PixelColors)
+        break;
+    case ColoringMode::PixelColors:
         mode = "Pixel Color";
-    else if (params->mode == ColoringMode::SolidColors)
+        break;
+    case ColoringMode::SolidColors:
         mode = "Solid Color";
-    else
+        break;
+    default:
         mode = "Unrecognized Coloring Mode";
+        break;
+    }
 
     // Determine the type of the input
     std::string inType;
-    if (params->inputType == InputType::Image)
+    switch (params->inputType)
+    {
+    case InputType::Image:
         inType = "Image";
-    else if (params->inputType == InputType::Video)
+        break;
+    case InputType::Video:
         inType = "Video";
-    else
+        break;
+	default:
         inType = "Unset";
+        break;
+    }
 
     // Print out the parameters
     std::cout << "Parameters:" << std::endl;
@@ -310,14 +317,10 @@ void printParams(ParamBundle* params)
     std::cout << "  Intensity/Edge: " << params->intensityEdgeWeight << std::endl;
     std::cout << "  Historicity:    " << params->historicityWeight << std::endl;
     std::cout << "  Coloring Mode:  " << mode << std::endl;
-    std::cout << "  Foreground:     ("
-        << static_cast<unsigned>(params->foreground.r) << ", "
-        << static_cast<unsigned>(params->foreground.g) << ", "
-        << static_cast<unsigned>(params->foreground.b) << ")" << std::endl;
-    std::cout << "  Background:     ("
-        << static_cast<unsigned>(params->background.r) << ", "
-        << static_cast<unsigned>(params->background.g) << ", "
-        << static_cast<unsigned>(params->background.b) << ")" << std::endl;
+    std::cout << "  Foreground:     (" << params->foreground.r << ", "
+        << params->foreground.g << ", " << params->foreground.b << ")" << std::endl;
+    std::cout << "  Background:     (" << params->background.r << ", "
+        << params->background.g << ", " << params->background.b << ")" << std::endl;
     std::cout << "  Input type:     " << inType << std::endl;
     std::cout << "  Input file:     " << params->inputFile << std::endl;
     std::cout << "  Output file:    " << params->outputFile << std::endl;

@@ -9,7 +9,6 @@
 
 
 #include "imageResource.hpp"
-#include "constants.hpp"
 #include "util.hpp"
 
 

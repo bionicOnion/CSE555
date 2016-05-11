@@ -24,6 +24,9 @@
 #include "types.hpp"
 
 
+ const short MAX_DIM = 640;
+
+
 class ImageResource
 {
 public:

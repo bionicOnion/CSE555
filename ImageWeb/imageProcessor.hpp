@@ -17,4 +17,8 @@
 #include "types.hpp"
 
 
+const uint16_t THREADS_PER_BLOCK = 32;
+const uint16_t EDGE_THRESH = 10;
+
+
 ReturnCode processImageResource(ImageResource& input, ImageResource& output, ParamBundle params);

@@ -24,7 +24,6 @@
 #endif
 
 #include "consoleProgressBar.hpp"
-#include "constants.hpp"
 
 
 ConsoleProgressBar::ConsoleProgressBar() :
@@ -81,13 +80,13 @@ void ConsoleProgressBar::setTitle(std::string title)
 {
     this->title = title;
     if (title.length() > titleWidth)
-        setTitleWidth(title.length());
+        setTitleWidth(uint8_t(title.length()));
 }
 
 
 void ConsoleProgressBar::setTitleWidth(uint8_t titleWidth)
 {
-    this->titleWidth = titleWidth < title.length() ? title.length() : titleWidth;
+	this->titleWidth = titleWidth < title.length() ? uint8_t(title.length()) : titleWidth;
     calculateProgressBarWidth();
 }
 

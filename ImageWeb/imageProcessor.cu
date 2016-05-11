@@ -35,20 +35,16 @@
 
 // OpenGL
 #include <GL/glew.h>
-#include <GL/GL.h>
 #include <GL/glut.h>
 
 // CUDA
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 #include <curand_kernel.h>
-
-// Thrust
 #include <thrust/device_ptr.h>
 #include <thrust/scan.h>
 
 #include "consoleProgressBar.hpp"
-#include "constants.hpp"
 #include "imageProcessor.hpp"
 #include "util.hpp"
 
@@ -687,7 +683,6 @@ __global__ void assignTriangleColorings(Triangle* triangles, uint32_t* numTriang
         triangles[offset].p3.color.g = srcImg[centroidOffset].g / 255.0;
         triangles[offset].p3.color.b = srcImg[centroidOffset].r / 255.0;
         break;
-    case ColoringMode::BlendedColor:
     case ColoringMode::PixelColors:
         uint32_t imgOffset;
         uint16_t pixX, pixY;

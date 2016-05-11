@@ -15,7 +15,11 @@
 
 
 #include <cstdint>
- #include <string>
+#include <string>
+
+
+const uint8_t DEFAULT_PBAR_WIDTH = 64;
+const uint8_t PERCENT_WIDTH = 10;
 
 
 class ConsoleProgressBar

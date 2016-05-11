@@ -45,7 +45,6 @@ const std::unordered_set<std::string> TIMING_ARGS{ "-t", "--time" };
 const std::unordered_set<std::string> VIDEO_FILE_ARGS { "-v", "--video" };
 
 // Coloring mode options
-const std::unordered_set<std::string> BLENDED_COLORING_MODE{ "b", "blend" };
 const std::unordered_set<std::string> CENTROID_COLORING_MODE{ "c", "centroid" };
 const std::unordered_set<std::string> PIXEL_COLORING_MODE { "p", "pix", "pixel" };
 const std::unordered_set<std::string> SOLID_COLORING_MODE { "s", "solid" };
