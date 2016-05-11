@@ -678,43 +678,107 @@ glReadPixels(0, 0, dims.x, dims.y, <span class="reserved">GL_BGR</span>, <span c
   <hr>
 
 
-  <!-- BENCHMARKING -->
-  <h3>Benchmarking</h3>
-  <p>
-    Due to the theoretically 'fast' GPGPU implementation of the pipeline described above, I was
-    interested to see exactly how fast the application was in practice. As such, I included some
-    timing checkpoints (enabled with the flag '-t/--timing') to precisely measure elapsed time
-    in the GPU pipeline (as well as an overall timer for the end-to-end performance of the system).
-    All of the numbers in this section represent a near-worst case scenario for this project: in
-    addition to the code in question being only moderately optimized, the system used for testing is
-    built out of aging components, and the perfomance reported here would likely pale in comparison
-    to the same code running on newer and higher-end cards such as the GTX 980 Ti or the recently
-    announced GTX 1080.
-    <br><br>
-    That said, the numbers below are still useful as an indication of the relative performance of
-    each element of the system and may be useful for drawing conclusions about the viability of
-    real-time video processing or targets for optimization work (in addition to providing a basic
-    frame of reference for the timing performance of the system).
-    <br><br>
-    The full specifications of the benchmarking system are as follows:
-    <ul>
-      <li>CPU: Intel Core i7 3770K @ 3.5 GHz</li>
-      <li>GPU: Geforce GTX 670 @ 941 MHz with 2 GB VRAM</li>
-      <li>RAM: 16 GB DDR3 @ 2133 MHz</li>
-    </ul>
-    <b>TODO</b>
-  </p>
-
-  <hr>
-
-
   <!-- PARAMETERIZATION -->
   <h3>Effects of Parameters</h3>
+
+  Each of the images in the following tables can be clicked to view a larger version.
+
   <p>
-    Vary edge to intensity weighting
-    Vary point ratio
-    Vary historicity ratio
-    Demonstrate a variety of coloring modes
+    <h4>Effect of Variance of Edge/Intensity Weight</h4>
+
+    <table>
+      <tr>
+        <th><i>w</i> = 0</th>
+        <th><i>w</i> = 0.01</th>
+        <th><i>w</i> = 0.025</th>
+        <th><i>w</i> = 0.05</th>
+        <th><i>w</i> = 0.1</th>
+        <th><i>w</i> = 0.25</th>
+        <th><i>w</i> = 0.5</th>
+      </tr>
+      <tr>
+        <td>
+          <a href="images/out/intEdgeWeight/formal_0.jpeg">
+            <img src="images/out/intEdgeWeight/formal_0.jpeg" alt="w = 0">
+          </a>
+        </td>
+        <td>
+          <a href="images/out/intEdgeWeight/formal_01.jpeg">
+            <img src="images/out/intEdgeWeight/formal_01.jpeg" alt="w = 0.01">
+          </a>
+        </td>
+        <td>
+          <a href="images/out/intEdgeWeight/formal_025.jpeg">
+            <img src="images/out/intEdgeWeight/formal_025.jpeg" alt="w = 0.025">
+          </a>
+        </td>
+        <td>
+          <a href="images/out/intEdgeWeight/formal_05.jpeg">
+            <img src="images/out/intEdgeWeight/formal_05.jpeg" alt="w = 0.05">
+          </a>
+        </td>
+        <td>
+          <a href="images/out/intEdgeWeight/formal_1.jpeg">
+            <img src="images/out/intEdgeWeight/formal_1.jpeg" alt="w = 0.1">
+          </a>
+        </td>
+        <td>
+          <a href="images/out/intEdgeWeight/formal_25.jpeg">
+            <img src="images/out/intEdgeWeight/formal_25.jpeg" alt="w = 0.25">
+          </a>
+        </td>
+        <td>
+          <a href="images/out/intEdgeWeight/formal_5.jpeg">
+            <img src="images/out/intEdgeWeight/formal_5.jpeg" alt="w = 0.5">
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <h4>Effect of Variance of Point Ratio</h4>
+
+    <table>
+      <tr>
+        <th><i>r</i> = 0.0025</th>
+        <th><i>r</i> = 0.005</th>
+        <th><i>r</i> = 0.01</th>
+        <th><i>r</i> = 0.025</th>
+        <th><i>r</i> = 0.05</th>
+        <th><i>r</i> = 0.1</th>
+      </tr>
+      <tr>
+        <td>
+          <a href="images/out/pointRatio/formal_0025.jpeg">
+            <img src="images/out/pointRatio/formal_0025.jpeg" alt="r = 0.0025">
+          </a>
+        </td>
+        <td>
+          <a href="images/out/pointRatio/formal_005.jpeg">
+            <img src="images/out/pointRatio/formal_005.jpeg" alt="r = 0.005">
+          </a>
+        </td>
+        <td>
+          <a href="images/out/pointRatio/formal_01.jpeg">
+            <img src="images/out/pointRatio/formal_01.jpeg" alt="r = 0.01">
+          </a>
+        </td>
+        <td>
+          <a href="images/out/pointRatio/formal_025.jpeg">
+            <img src="images/out/pointRatio/formal_025.jpeg" alt="r = 0.025">
+          </a>
+        </td>
+        <td>
+          <a href="images/out/pointRatio/formal_05.jpeg">
+            <img src="images/out/pointRatio/formal_05.jpeg" alt="r = 0.05">
+          </a>
+        </td>
+        <td>
+          <a href="images/out/pointRatio/formal_1.jpeg">
+            <img src="images/out/pointRatio/formal_1.jpeg" alt="r = 0.1">
+          </a>
+        </td>
+      </tr>
+    </table>
   </p>
 
   <hr>
