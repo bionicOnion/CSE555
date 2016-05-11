@@ -1,1 +1,5 @@
-ProkudinGorskii/RGB_Composition/
+*.sdf
+*.opensdf
+*.vcxproj*
+*/packages/
+*/x64/
