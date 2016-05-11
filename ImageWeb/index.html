@@ -571,7 +571,108 @@ glReadPixels(0, 0, dims.x, dims.y, <span class="reserved">GL_BGR</span>, <span c
 
     <h4>Videos</h4>
 
-    <b>TODO</b>
+    Extending the pipeline to work with video data was relatively straightforward and was able to
+    produce a variety of compelling results:
+
+    <hr class="invisible">
+    <figure>
+      <a href="images/src/birdWire.gif">
+        <img src="images/src/birdWire.gif" alt="Bird on Wire" />
+      </a>
+      <figcaption>Input video of a bird sitting on a wire</figcaption>
+    </figure>
+    <figure>
+      <a href="images/out/birdWire.gif">
+        <img src="images/out/birdWire.gif" alt="Bird on Wire" />
+      </a>
+      <figcaption>Resulting video using pixel coloring</figcaption>
+    </figure>
+    <hr class="invisible">
+
+    <hr class="invisible">
+    <figure>
+      <a href="images/src/waterfall.gif">
+        <img src="images/src/waterfall.gif" alt="Waterfall" />
+      </a>
+      <figcaption>Input video of a waterfall</figcaption>
+    </figure>
+    <figure>
+      <a href="images/out/waterfall.gif">
+        <img src="images/out/waterfall.gif" alt="Waterfall" />
+      </a>
+      <figcaption>Resulting video using centroid coloring</figcaption>
+    </figure>
+    <hr class="invisible">
+
+    <hr class="invisible">
+    <figure>
+      <a href="images/src/waterfall.gif">
+        <img src="images/src/waterfall.gif" alt="Waterfall" />
+      </a>
+      <figcaption>Input video of a waterfall</figcaption>
+    </figure>
+    <figure>
+      <a href="images/out/waterfall_samples.gif">
+        <img src="images/out/waterfall_samples.gif" alt="Waterfall" />
+      </a>
+      <figcaption>Resulting video using pixel coloring</figcaption>
+    </figure>
+    <hr class="invisible">
+
+        <hr class="invisible">
+    <figure>
+      <a href="images/src/trees.gif">
+        <img src="images/src/trees.gif" alt="Trees" />
+      </a>
+      <figcaption>Input video of trees in the wind</figcaption>
+    </figure>
+    <figure>
+      <a href="images/out/trees.gif">
+        <img src="images/out/trees.gif" alt="Trees" />
+      </a>
+      <figcaption>Resulting video using centroid coloring</figcaption>
+    </figure>
+    <hr class="invisible">
+
+    <hr class="invisible">
+    <figure>
+      <a href="images/src/hummingbirds.gif">
+        <img src="images/src/hummingbirds.gif" alt="Hummingbirds" />
+      </a>
+      <figcaption>Input video of hummingbirds</figcaption>
+    </figure>
+    <figure>
+      <a href="images/out/hummingbirds.gif">
+        <img src="images/out/hummingbirds.gif" alt="Hummingbirds" />
+      </a>
+      <figcaption>Resulting video using pixel coloring</figcaption>
+    </figure>
+    <hr class="invisible">
+
+    <hr class="invisible">
+    <figure>
+      <a href="images/src/hummingbirds.gif">
+        <img src="images/src/hummingbirds.gif" alt="Hummingbirds" />
+      </a>
+      <figcaption>Input video of hummingbirds</figcaption>
+    </figure>
+    <figure>
+      <a href="images/out/hummingbirds_centroid.gif">
+        <img src="images/out/hummingbirds_centroid.gif" alt="Hummingbirds" />
+      </a>
+      <figcaption>Resulting video using centroid coloring</figcaption>
+    </figure>
+    <hr class="invisible">
+
+    The computed videos are able to preserve video dynamics quite well (especially evident in the
+    computed videos of the waterfall, which maintains the appearance of flowing water). However,
+    the triangulation techniques are ill-suited to conveying small-scale motion, especially in the
+    context of fine details, as is especially clear in the video of swaying trees. However, one of
+    the other confounds at work in that video was image resolution: the other source videos are all
+    640x480 standard definition videos; only the tree video was 1280x720 HD footage. This may have
+    impacted the quality of the results and <i>definitely</i> impacted the efficiency of the
+    rendering pipeline, which performed noticeably faster on the other source videos.
+
   </p>
 
   <hr>
