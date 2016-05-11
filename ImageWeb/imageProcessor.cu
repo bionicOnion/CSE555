@@ -193,6 +193,9 @@ ReturnCode processImageResource(ImageResource& input, ImageResource& output, Par
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_STENCIL_TEST);
     glEnable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_LINE_SMOOTH);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glViewport(0, 0, dims.x, dims.y);
 
